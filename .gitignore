@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+dist/
+.env
+.env.local
+.env.production.local
+*.db
+*.db-journal
+.turso/
+.vercel
+.DS_Store
