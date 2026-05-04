@@ -8,22 +8,23 @@
     "start": "next start"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "@sapiom/fetch": "^0.5.0",
+    "better-auth": "^1.2.0",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.475.0",
     "next": "^15.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "better-auth": "^1.2.0",
-    "@libsql/client": "^0.14.0",
     "stripe": "^17.0.0",
-    "lucide-react": "^0.475.0",
-    "clsx": "^2.1.0",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
-    "tailwindcss": "^4.0.0"
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0"
   }
 }
