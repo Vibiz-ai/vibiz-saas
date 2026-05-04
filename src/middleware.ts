@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 export function middleware(request: NextRequest) {
   const authEnabled = !!process.env.DATABASE_URL;
   const { pathname } = request.nextUrl;
 
-  // Auth disabled — redirect auth pages to home
   if (!authEnabled) {
     if (
       pathname.startsWith("/dashboard") ||
@@ -17,9 +17,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Auth enabled — protect dashboard from unauthenticated access
   if (pathname.startsWith("/dashboard")) {
-    const sessionCookie = request.cookies.get("better-auth.session_token");
+    const sessionCookie = getSessionCookie(request);
     if (!sessionCookie) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
