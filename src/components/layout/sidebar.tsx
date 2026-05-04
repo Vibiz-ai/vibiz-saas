@@ -4,6 +4,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
 
+type IconMap = Record<string, React.ComponentType<{ className?: string }>>;
+const IconRegistry = Icons as unknown as IconMap;
+
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -14,9 +17,10 @@ export function Sidebar() {
       </div>
       <nav className="space-y-1">
         {config.dashboard.sidebarItems.map((item) => {
-          const Icon = (Icons as Record<string, React.ComponentType<{ className?: string }>>)[
-            item.icon.charAt(0).toUpperCase() + item.icon.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
-          ];
+          const key =
+            item.icon.charAt(0).toUpperCase() +
+            item.icon.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+          const Icon = IconRegistry[key];
           const active = pathname === item.href;
           return (
             <a

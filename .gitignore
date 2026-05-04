@@ -10,3 +10,4 @@ dist/
 .turso/
 .vercel
 .DS_Store
+tsconfig.tsbuildinfo

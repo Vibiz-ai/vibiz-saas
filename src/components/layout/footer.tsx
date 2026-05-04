@@ -24,9 +24,6 @@ export function Footer() {
         </div>
         <p className="text-sm text-gray-400">{config.footer.copyright}</p>
       </div>
-      {config.footer.builtWith && (
-        <p className="text-center text-xs text-gray-300 mt-6">{config.footer.builtWith}</p>
-      )}
     </footer>
   );
 }
