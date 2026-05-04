@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { LibsqlDialect } from "@libsql/kysely-libsql";
 import { appUrl } from "./app-url";
 
 const dbUrl = process.env.DATABASE_URL;
@@ -18,20 +19,25 @@ function trustedOrigins(): string[] {
   return origins;
 }
 
+function buildDialect(url: string) {
+  return new LibsqlDialect({
+    url,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+}
+
 /**
  * Auth is only active when DATABASE_URL is set.
- * Local dev: file:./dev.db (SQLite)
- * Production: libsql://... (Turso — set automatically by vibiz on deploy)
- * Not set: auth disabled, app runs as a landing page.
+ * Local dev: libsql://localhost:8080 via `turso dev` (or remote Turso URL)
+ * Production: libsql://<db>.turso.io with TURSO_AUTH_TOKEN
+ * file:// URLs are not supported by the libsql Kysely dialect — use Turso
+ * (free tier is fine for local). Not set: auth disabled.
  */
 export const auth = dbUrl
   ? betterAuth({
       database: {
-        provider: "sqlite",
-        url: dbUrl,
-        ...(process.env.TURSO_AUTH_TOKEN
-          ? { authToken: process.env.TURSO_AUTH_TOKEN }
-          : {}),
+        dialect: buildDialect(dbUrl),
+        type: "sqlite",
       },
       emailAndPassword: { enabled: true },
       session: { expiresIn: 60 * 60 * 24 * 7 },

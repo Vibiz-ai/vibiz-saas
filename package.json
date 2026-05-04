@@ -9,9 +9,11 @@
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
+    "@libsql/kysely-libsql": "^0.4.1",
     "@sapiom/fetch": "^0.5.0",
     "better-auth": "^1.2.0",
     "clsx": "^2.1.0",
+    "kysely": "^0.28.17",
     "lucide-react": "^0.475.0",
     "next": "^15.3.0",
     "react": "^19.1.0",
