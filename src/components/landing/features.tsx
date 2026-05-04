@@ -1,6 +1,9 @@
 import { config } from "@/lib/config";
 import * as Icons from "lucide-react";
 
+type IconMap = Record<string, React.ComponentType<{ className?: string }>>;
+const IconRegistry = Icons as unknown as IconMap;
+
 export function Features() {
   return (
     <section id="features" className="py-24">
@@ -15,9 +18,10 @@ export function Features() {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
           {config.features.map((feature) => {
-            const Icon = (Icons as Record<string, React.ComponentType<{ className?: string }>>)[
-              feature.icon.charAt(0).toUpperCase() + feature.icon.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
-            ];
+            const key =
+              feature.icon.charAt(0).toUpperCase() +
+              feature.icon.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+            const Icon = IconRegistry[key];
             return (
               <div key={feature.title} className="group p-6 rounded-xl border border-gray-100 hover:border-brand-primary/20 hover:shadow-lg hover:shadow-brand-primary/5 transition-all duration-300">
                 <div className="w-12 h-12 bg-brand-primary/10 rounded-lg flex items-center justify-center text-brand-primary mb-4 group-hover:bg-brand-primary group-hover:text-white transition-colors">
