@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/config";
+import { VibizSelectBridge } from "@/components/VibizSelectBridge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <VibizSelectBridge />
+      </body>
     </html>
   );
 }
