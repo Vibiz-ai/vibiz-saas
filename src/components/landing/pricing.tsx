@@ -4,6 +4,14 @@ import { config } from "@/lib/config";
 import { type Offer, formatPrice, getSeededOffers } from "@/lib/offers";
 import { cn } from "@/lib/utils";
 
+// True when the deployment was provisioned by the Vibiz platform (env var
+// stamped by sandbox-deploy at deploy time). On Vibiz-managed sites the
+// static fallback tiers from template.config.ts are NEVER rendered — they
+// would ship $0/$29/Custom placeholder pricing that EP-1433 explicitly
+// forbade. Standalone clones of the template (no Vibiz env marker) keep
+// the fallback so the pricing section still works out of the box.
+const IS_VIBIZ_DEPLOY = process.env.NEXT_PUBLIC_VIBIZ_DEPLOY === "1";
+
 export async function Pricing() {
   const offers = await getSeededOffers();
 
@@ -18,11 +26,27 @@ export async function Pricing() {
         </div>
         {offers.length > 0 ? (
           <OffersGrid offers={offers} />
+        ) : IS_VIBIZ_DEPLOY ? (
+          <PricingComingSoon />
         ) : (
           <FallbackTiersGrid />
         )}
       </div>
     </section>
+  );
+}
+
+function PricingComingSoon() {
+  return (
+    <div className="mt-16 max-w-xl mx-auto rounded-xl border border-gray-200 p-10 text-center">
+      <h3 className="text-lg font-semibold text-gray-900">
+        Pricing coming soon
+      </h3>
+      <p className="text-sm text-gray-500 mt-2">
+        Set up your offers in the dashboard, then republish to ship pricing
+        to your live site.
+      </p>
+    </div>
   );
 }
 

@@ -41,17 +41,31 @@ export async function getSeededOffers(): Promise<Offer[]> {
   }
 }
 
+// Scheme allowlist for paymentLinkUrl. The deployed app renders this directly
+// into <a href={...}>, and React happily ships `href="javascript:..."` with
+// only a console warning. The seed JSON is written platform-side by Vibiz,
+// but a prompt-injected agent (or future tool refactor) could overwrite it
+// inside the sandbox. Reject anything that isn't a Stripe-hosted URL.
+const STRIPE_URL_PREFIXES = [
+  "https://buy.stripe.com/",
+  "https://checkout.stripe.com/",
+];
+
 function isValidOffer(o: unknown): o is Offer {
   if (!o || typeof o !== "object") return false;
   const x = o as Record<string, unknown>;
-  return (
-    typeof x.id === "string" &&
-    typeof x.title === "string" &&
-    typeof x.priceCents === "number" &&
-    typeof x.priceCurrency === "string" &&
-    typeof x.paymentLinkUrl === "string" &&
-    x.paymentLinkUrl.length > 0
-  );
+  if (
+    typeof x.id !== "string" ||
+    typeof x.title !== "string" ||
+    typeof x.priceCents !== "number" ||
+    typeof x.priceCurrency !== "string" ||
+    typeof x.paymentLinkUrl !== "string"
+  ) {
+    return false;
+  }
+  const url: string = x.paymentLinkUrl;
+  if (url.length === 0) return false;
+  return STRIPE_URL_PREFIXES.some((p) => url.startsWith(p));
 }
 
 /**
