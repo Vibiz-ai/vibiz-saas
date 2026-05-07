@@ -1,0 +1,78 @@
+name: e2b template rebuild
+
+# Rebuild the `vibiz-saas-opencode-fab-test` E2B template every time
+# main moves. Sandboxes booted after the rebuild get the fresh image;
+# in-flight sandboxes are unaffected (E2B doesn't hot-swap live
+# instances). This replaces the previous manual flow documented in
+# the vibiz repo's e2b/vibiz-saas-opencode/README.md.
+#
+# Required repo secrets:
+#   E2B_API_KEY  —  https://e2b.dev/dashboard?tab=keys
+#                   Set under Settings → Secrets and variables → Actions.
+
+on:
+  push:
+    branches: [main]
+    # Skip rebuilds when the only change is to docs / workflow files
+    # that don't affect the runtime image. Keeps CI minutes for real
+    # source/dep changes.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/e2b-rebuild.yml'
+  workflow_dispatch:
+    inputs:
+      template_name:
+        description: 'E2B template name to build'
+        required: false
+        default: 'vibiz-saas-opencode-fab-test'
+
+# Only one rebuild at a time. If a second push lands while we're
+# building, the in-flight one finishes and we skip ahead to the
+# newest commit (cancel-in-progress).
+concurrency:
+  group: e2b-template-rebuild
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full clone not required — Dockerfile COPYs the working
+          # tree, not git history. fetch-depth: 1 keeps it lean.
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install E2B CLI
+        run: npm install -g @e2b/cli@latest
+
+      - name: Build template
+        env:
+          # CLI reads E2B_API_KEY for non-interactive auth (no
+          # `e2b auth login` step needed in CI).
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+        run: |
+          if [ -z "$E2B_API_KEY" ]; then
+            echo "::error::E2B_API_KEY secret is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          TEMPLATE_NAME="${{ github.event.inputs.template_name || 'vibiz-saas-opencode-fab-test' }}"
+          echo "Building template: $TEMPLATE_NAME"
+          e2b template build --name "$TEMPLATE_NAME"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## E2B template rebuild" >> "$GITHUB_STEP_SUMMARY"
+          echo "Template: \`vibiz-saas-opencode-fab-test\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,39 @@
+# E2B template config for vibiz-saas.
+#
+# Builds the in-repo source into the `vibiz-saas-opencode-fab-test`
+# E2B template (id: pxyqvs4r02cch8qbshvw). CI rebuilds on every push
+# to main via .github/workflows/e2b-rebuild.yml so the live template
+# always reflects this repo's main.
+#
+# Manual rebuild (rarely needed once CI is wired):
+#   e2b auth login                                        # one-time
+#   e2b template build --name vibiz-saas-opencode-fab-test
+
+# Template name. CI passes --name to override if needed; this is the
+# default for local builds. Re-using an existing name updates that
+# template (same ID) instead of creating a new one.
+template_id = "vibiz-saas-opencode-fab-test"
+
+# Resources — match the agent + dev-server load. 2 cores + 2GB is
+# enough for Next.js dev + opencode running in parallel; bump if
+# the user reports `npm run dev` hitting OOM in heavier projects.
+cpu_count = 2
+memory_mb = 2048
+
+# Team binding (filled by `e2b auth login` per-user; CI uses
+# E2B_API_KEY from secrets directly).
+team_id = ""
+
+# Path to the Dockerfile, relative to this e2b.toml. Both live at
+# the repo root — build context = entire repo, filtered by .dockerignore.
+dockerfile = "Dockerfile"
+
+# The startup command E2B runs when a fresh sandbox boots. Fires
+# `npm run dev` in the background so the iframe is live the moment
+# the bootstrap probe lands. nohup + redirected logs let our Trigger
+# task's curl probe find the server already up. The subshell + stdin
+# closure (`</dev/null`) prevents E2B's RPC from hanging on stdin.
+start_cmd = "(cd /home/user/app && nohup npm run dev -- -p 3000 </dev/null >/tmp/next-dev.log 2>&1 &)"
+
+# No extra context filtering needed beyond .dockerignore.
+ignore = []
