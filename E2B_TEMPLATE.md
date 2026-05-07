@@ -33,12 +33,14 @@ Next sandbox-deploy in vibiz/ uses the fresh image
 
 ## Required repo secret
 
-CI needs `E2B_API_KEY` to authenticate with E2B. One-time setup:
+CI needs `E2B_ACCESS_TOKEN` (a **personal access token**, distinct from the runtime SDK's `E2B_API_KEY`) to authenticate with E2B for template management operations. One-time setup:
 
-1. Get the key from <https://e2b.dev/dashboard?tab=keys>.
+1. Open <https://e2b.dev/dashboard?tab=personal> → **Personal access tokens** → create one.
 2. In this repo, go to **Settings → Secrets and variables → Actions → New repository secret**.
-3. Name: `E2B_API_KEY`. Value: the key.
+3. Name: `E2B_ACCESS_TOKEN`. Value: the token from step 1.
 4. Push any change to `main` (or use **Actions → e2b template rebuild → Run workflow**) to verify.
+
+> **Don't confuse the two tokens.** `E2B_API_KEY` (set in `vibiz` runtime envs) is for `Sandbox.create()` SDK calls. `E2B_ACCESS_TOKEN` (this one) is for `e2b template build` CLI calls. Different scope, different dashboard tab.
 
 ## Manual rebuild
 

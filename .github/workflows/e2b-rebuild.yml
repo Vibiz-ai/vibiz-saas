@@ -7,8 +7,13 @@ name: e2b template rebuild
 # the vibiz repo's e2b/vibiz-saas-opencode/README.md.
 #
 # Required repo secrets:
-#   E2B_API_KEY  —  https://e2b.dev/dashboard?tab=keys
-#                   Set under Settings → Secrets and variables → Actions.
+#   E2B_ACCESS_TOKEN  —  https://e2b.dev/dashboard?tab=personal
+#                        Personal access token, NOT the API key. The CLI
+#                        uses this for management operations (build,
+#                        publish). The runtime SDK in `vibiz` uses
+#                        `E2B_API_KEY` instead — different scope, do not
+#                        confuse them.
+#                        Set under Settings → Secrets and variables → Actions.
 
 on:
   push:
@@ -57,12 +62,15 @@ jobs:
 
       - name: Build template
         env:
-          # CLI reads E2B_API_KEY for non-interactive auth (no
-          # `e2b auth login` step needed in CI).
-          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+          # CLI reads E2B_ACCESS_TOKEN for non-interactive auth (the
+          # in-CLI message confirms this: "If you are seeing this
+          # message in CI/CD you may need to set the E2B_ACCESS_TOKEN
+          # environment variable"). Distinct from E2B_API_KEY (which is
+          # for runtime sandbox SDK calls in the vibiz repo).
+          E2B_ACCESS_TOKEN: ${{ secrets.E2B_ACCESS_TOKEN }}
         run: |
-          if [ -z "$E2B_API_KEY" ]; then
-            echo "::error::E2B_API_KEY secret is not set. Add it under Settings → Secrets and variables → Actions."
+          if [ -z "$E2B_ACCESS_TOKEN" ]; then
+            echo "::error::E2B_ACCESS_TOKEN secret is not set. Get a personal access token at https://e2b.dev/dashboard?tab=personal and add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
           TEMPLATE_NAME="${{ github.event.inputs.template_name || 'vibiz-saas-opencode-fab-test' }}"
