@@ -10,6 +10,14 @@
   --font-body: "Inter", system-ui, sans-serif;
 }
 
+@theme inline {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+}
+
 body {
   font-family: var(--font-body);
   color: var(--brand-text);
