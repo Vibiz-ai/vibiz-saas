@@ -1,0 +1,85 @@
+name: e2b template rebuild
+
+# Rebuild the `vibiz-saas-opencode-fab-test` E2B template every time
+# main moves. Sandboxes booted after the rebuild get the fresh image;
+# in-flight sandboxes are unaffected (E2B doesn't hot-swap live
+# instances). This replaces the previous manual flow documented in
+# the vibiz repo's e2b/vibiz-saas-opencode/README.md.
+#
+# Required repo secrets:
+#   E2B_ACCESS_TOKEN  —  https://e2b.dev/dashboard?tab=personal
+#                        Personal access token, NOT the API key. The CLI
+#                        uses this for management operations (build,
+#                        publish). The runtime SDK in `vibiz` uses
+#                        `E2B_API_KEY` instead — different scope, do not
+#                        confuse them.
+#                        Set under Settings → Secrets and variables → Actions.
+
+on:
+  push:
+    branches: [main]
+    # Skip rebuilds when the only change is to docs / workflow files
+    # that don't affect the runtime image. Keeps CI minutes for real
+    # source/dep changes.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/e2b-rebuild.yml'
+  workflow_dispatch: {}
+
+# Only one rebuild at a time. If a second push lands while we're
+# building, the in-flight one finishes and we skip ahead to the
+# newest commit (cancel-in-progress).
+concurrency:
+  group: e2b-template-rebuild
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full clone not required — Dockerfile COPYs the working
+          # tree, not git history. fetch-depth: 1 keeps it lean.
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install E2B CLI
+        run: npm install -g @e2b/cli@latest
+
+      - name: Build template
+        env:
+          # CLI reads E2B_ACCESS_TOKEN for non-interactive auth (the
+          # in-CLI message confirms this: "If you are seeing this
+          # message in CI/CD you may need to set the E2B_ACCESS_TOKEN
+          # environment variable"). Distinct from E2B_API_KEY (which is
+          # for runtime sandbox SDK calls in the vibiz repo).
+          E2B_ACCESS_TOKEN: ${{ secrets.E2B_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$E2B_ACCESS_TOKEN" ]; then
+            echo "::error::E2B_ACCESS_TOKEN secret is not set. Get a personal access token at https://e2b.dev/dashboard?tab=personal and add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          # No --name flag: e2b reads the template_id from ./e2b.toml,
+          # which is pinned to the unique template ID
+          # (`pxyqvs4r02cch8qbshvw`). Bare-name lookup 404s in CI because
+          # the access-token's team scope can't resolve a team-prefixed
+          # name from a bare identifier.
+          echo "Building template (id from e2b.toml: pxyqvs4r02cch8qbshvw)"
+          e2b template build
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## E2B template rebuild" >> "$GITHUB_STEP_SUMMARY"
+          echo "Template: \`vibiz-saas-opencode-fab-test\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

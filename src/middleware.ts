@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 export function middleware(request: NextRequest) {
-  const authEnabled = !!process.env.DATABASE_URL;
+  const authEnabled = !!(process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL);
   const { pathname } = request.nextUrl;
 
   if (!authEnabled) {
