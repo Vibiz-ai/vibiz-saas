@@ -16,11 +16,13 @@
 # Source of truth for this ID is the E2B dashboard.
 template_id = "pxyqvs4r02cch8qbshvw"
 
-# Resources — match the agent + dev-server load. 2 cores + 2GB is
-# enough for Next.js dev + opencode running in parallel; bump if
-# the user reports `npm run dev` hitting OOM in heavier projects.
-cpu_count = 2
-memory_mb = 2048
+# Resources — 2 cores / 4GB. Bumped from 2GB on 2026-05-07 after
+# kernel OOM-killing next-server when opencode runs concurrently
+# (next dev RSS ≈ 700MB + opencode RSS ≈ 300-500MB + Anthropic
+# response buffers easily clears the 2GB cgroup limit). Workflow
+# auto-rebuilds will pick this up on every push to main.
+cpu_count = 4
+memory_mb = 4096
 
 # Team binding (filled by `e2b auth login` per-user; CI uses
 # E2B_API_KEY from secrets directly).
