@@ -2,7 +2,10 @@ import { betterAuth } from "better-auth";
 import { LibsqlDialect } from "@libsql/kysely-libsql";
 import { appUrl } from "./app-url";
 
-const dbUrl = process.env.DATABASE_URL;
+// Vibiz-managed deploys provision TURSO_DATABASE_URL via the parent
+// repo's sandbox-deploy task; standalone clones may still set DATABASE_URL
+// in .env. Read both, prefer the Vibiz-managed name.
+const dbUrl = process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL;
 
 function trustedOrigins(): string[] {
   const origins: string[] = [];

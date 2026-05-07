@@ -22,7 +22,7 @@ export async function guardAiRequest(): Promise<GuardResult> {
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "auth_disabled", message: "DATABASE_URL not set — auth required for AI" },
+        { error: "auth_disabled", message: "TURSO_DATABASE_URL not set — auth required for AI" },
         { status: 503 },
       ),
     };
