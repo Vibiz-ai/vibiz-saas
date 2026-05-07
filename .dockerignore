@@ -1,0 +1,32 @@
+# Build context exclusions — keep the upload to E2B small + fast.
+# The Dockerfile re-creates node_modules + .next inside the image,
+# so shipping them in the context is wasted bandwidth.
+
+node_modules/
+.next/
+out/
+dist/
+.git/
+.github/
+.turso/
+.vercel/
+
+# Local env never makes it into the image — sandbox-deploy injects
+# runtime env vars (TURSO_*, SAPIOM_*, etc.) per workspace.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.log
+tsconfig.tsbuildinfo
+
+# Local DB artifacts (sqlite, etc.) — re-created at runtime
+*.db
+*.db-journal
