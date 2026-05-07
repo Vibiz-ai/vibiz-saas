@@ -21,7 +21,7 @@ template_id = "pxyqvs4r02cch8qbshvw"
 # (next dev RSS ≈ 700MB + opencode RSS ≈ 300-500MB + Anthropic
 # response buffers easily clears the 2GB cgroup limit). Workflow
 # auto-rebuilds will pick this up on every push to main.
-cpu_count = 2
+cpu_count = 4
 memory_mb = 4096
 
 # Team binding (filled by `e2b auth login` per-user; CI uses
