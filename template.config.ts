@@ -84,7 +84,14 @@ export const config = {
   pricing: {
     headline: "Simple, transparent pricing",
     subheadline: "Start free. Upgrade when you need to.",
-    tiers: [
+    // Live offers are seeded by Vibiz at sandbox boot into
+    // `data/offers.json`. The Pricing component reads that JSON and renders
+    // <a href={offer.paymentLinkUrl}>Buy now</a> for each. The tiers below
+    // are the FALLBACK rendered only when offers.json is missing or empty —
+    // i.e. fresh clones of the template before Vibiz seeds them, or anyone
+    // using the template standalone. Editing these does NOT change live
+    // pricing on a Vibiz-deployed site; do that in the Vibiz dashboard.
+    fallbackTiers: [
       {
         name: "Free",
         price: "$0",
@@ -93,7 +100,6 @@ export const config = {
         features: ["Up to 3 projects", "Basic analytics", "Community support"],
         cta: { text: "Get Started", href: "/signup" },
         highlighted: false,
-        stripePriceId: "",
       },
       {
         name: "Pro",
@@ -109,7 +115,6 @@ export const config = {
         ],
         cta: { text: "Start Free Trial", href: "/signup" },
         highlighted: true,
-        stripePriceId: "price_PLACEHOLDER_PRO",
       },
       {
         name: "Enterprise",
@@ -125,7 +130,6 @@ export const config = {
         ],
         cta: { text: "Contact Sales", href: "mailto:sales@myproduct.com" },
         highlighted: false,
-        stripePriceId: "",
       },
     ],
   },
