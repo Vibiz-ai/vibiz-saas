@@ -26,12 +26,7 @@ on:
       - 'docs/**'
       - '.github/**'
       - '!.github/workflows/e2b-rebuild.yml'
-  workflow_dispatch:
-    inputs:
-      template_name:
-        description: 'E2B template name to build'
-        required: false
-        default: 'vibiz-saas-opencode-fab-test'
+  workflow_dispatch: {}
 
 # Only one rebuild at a time. If a second push lands while we're
 # building, the in-flight one finishes and we skip ahead to the
@@ -73,9 +68,13 @@ jobs:
             echo "::error::E2B_ACCESS_TOKEN secret is not set. Get a personal access token at https://e2b.dev/dashboard?tab=personal and add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
-          TEMPLATE_NAME="${{ github.event.inputs.template_name || 'vibiz-saas-opencode-fab-test' }}"
-          echo "Building template: $TEMPLATE_NAME"
-          e2b template build --name "$TEMPLATE_NAME"
+          # No --name flag: e2b reads the template_id from ./e2b.toml,
+          # which is pinned to the unique template ID
+          # (`pxyqvs4r02cch8qbshvw`). Bare-name lookup 404s in CI because
+          # the access-token's team scope can't resolve a team-prefixed
+          # name from a bare identifier.
+          echo "Building template (id from e2b.toml: pxyqvs4r02cch8qbshvw)"
+          e2b template build
 
       - name: Summary
         if: always()

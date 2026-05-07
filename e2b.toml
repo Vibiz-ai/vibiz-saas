@@ -9,10 +9,12 @@
 #   e2b auth login                                        # one-time
 #   e2b template build --name vibiz-saas-opencode-fab-test
 
-# Template name. CI passes --name to override if needed; this is the
-# default for local builds. Re-using an existing name updates that
-# template (same ID) instead of creating a new one.
-template_id = "vibiz-saas-opencode-fab-test"
+# Bind to the existing E2B template by its unique ID (NOT name). Name-
+# based lookup 404s in CI because the token's team scope doesn't
+# resolve `lautaro/vibiz-saas-opencode-fab-test` from a bare name —
+# IDs are global, so the build hits the right template every time.
+# Source of truth for this ID is the E2B dashboard.
+template_id = "pxyqvs4r02cch8qbshvw"
 
 # Resources — match the agent + dev-server load. 2 cores + 2GB is
 # enough for Next.js dev + opencode running in parallel; bump if
