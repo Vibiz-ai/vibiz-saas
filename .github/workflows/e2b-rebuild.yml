@@ -18,14 +18,29 @@ name: e2b template rebuild
 on:
   push:
     branches: [main]
-    # Skip rebuilds when the only change is to docs / workflow files
-    # that don't affect the runtime image. Keeps CI minutes for real
-    # source/dep changes.
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/**'
-      - '!.github/workflows/e2b-rebuild.yml'
+    # Rebuild only when files copied into /home/user/app or image
+    # configuration change. AGENTS.md and .opencode/** are runtime
+    # agenting inputs, so they must rebuild the template even though
+    # they are Markdown.
+    paths:
+      - 'AGENTS.md'
+      - 'opencode.json'
+      - '.opencode/**'
+      - '.dockerignore'
+      - 'Dockerfile'
+      - 'e2b.toml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'data/**'
+      - 'scripts/**'
+      - 'template.config.ts'
+      - 'next.config.ts'
+      - 'tailwind.config.ts'
+      - 'postcss.config.mjs'
+      - 'tsconfig.json'
+      - '.env.example'
+      - '.github/workflows/e2b-rebuild.yml'
   workflow_dispatch: {}
 
 # Only one rebuild at a time. If a second push lands while we're
