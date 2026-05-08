@@ -25,25 +25,32 @@ Minimal one-time purchase flow for a generated Vibiz app.
                                               |
                                               v
                                 +---------------------------+
-                                | 5. Vibiz verifies paid    |
-                                |    Checkout Session       |
+                                | 5. Vibiz verifies session |
+                                |    and mints claim token  |
                                 +-------------+-------------+
                                               |
                                               v
                                 +---------------------------+
                                 | 6. Vibiz redirects buyer  |
-                                |    back to generated app  |
+                                |    to generated app with  |
+                                |    claim=...              |
                                 +-------------+-------------+
                                               |
                                               v
                                 +---------------------------+
-                                | 7. Generated app stores   |
-                                |    local paid entitlement |
+                                | 7. Generated app verifies |
+                                |    claim with Vibiz       |
                                 +-------------+-------------+
                                               |
                                               v
                                 +---------------------------+
-                                | 8. Future visits unlock   |
+                                | 8. Generated app stores   |
+                                |    local entitlement      |
+                                +-------------+-------------+
+                                              |
+                                              v
+                                +---------------------------+
+                                | 9. Future visits unlock   |
                                 |    from local entitlement |
                                 +---------------------------+
 ```
@@ -52,4 +59,4 @@ Notes:
 
 - `https://vibiz.ai/post-checkout?session_id=cs_...` is not called by our frontend. Stripe sends the buyer's browser directly to that URL after checkout because Vibiz configures it on the Payment Link.
 - The webhook and redirect are separate. The webhook records the payment; the redirect returns the buyer to the generated app.
-- Today, `/post-checkout` verifies payment and redirects with a success marker. The proposed next step is to redirect with a short-lived claim so the generated app can safely store local paid access.
+- Today, `/post-checkout` verifies payment and redirects with a success marker. The proposed next step is for `/post-checkout` to mint a short-lived claim, redirect the buyer back to the generated app with that claim, and let the generated app verify it before storing local paid access.
