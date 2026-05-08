@@ -56,15 +56,9 @@ const STRIPE_URL_PREFIXES = [
 type RawOffer = Omit<Offer, "entitlementKey" | "entitlementType"> &
   Partial<Pick<Offer, "entitlementKey" | "entitlementType">>;
 
-function fallbackEntitlementKey(offer: Pick<Offer, "id" | "title">): string {
-  const slug = offer.title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 48);
+function fallbackEntitlementKey(offer: Pick<Offer, "id">): string {
   const suffix = offer.id.replace(/-/g, "").slice(0, 8) || "offer";
-  return `${slug || "offer"}_${suffix}`;
+  return `offer_${suffix}`;
 }
 
 function normalizeOffer(offer: RawOffer): Offer {

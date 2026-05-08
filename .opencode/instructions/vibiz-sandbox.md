@@ -8,6 +8,7 @@ Important runtime files and contracts:
 - `e2b.toml` starts the Next dev server on port 3000.
 - `src/components/landing/pricing.tsx` reads seeded offers and renders checkout links.
 - `src/lib/offers.ts` validates `data/offers.json` and rejects non-Stripe-hosted payment URLs.
+- `src/app/page.tsx` forwards post-checkout `claim` query params from the legacy-safe root landing URL to `/payment-success`.
 - `src/app/payment-success/page.tsx` exchanges Vibiz post-checkout claims and stores local paid entitlements.
 - `src/lib/entitlements.ts` is the local paid-feature gate surface for generated app features.
 - `src/lib/vibiz-runtime.ts` calls the parent Vibiz runtime API; do not replace it with direct Stripe code.
