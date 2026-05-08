@@ -1,19 +1,44 @@
-# Agent guide — vibiz-saas chassis
+# Vibiz SaaS Sandbox Builder Rules
 
-You are editing the Vibiz starter Next.js project. The end goal is almost
-always to **adapt the marketing site and dashboard to a specific business
-the user describes**. This file is your map so you can skip discovery and
-go straight to the right files.
+This repo is the source template for Vibiz-built customer sites. The Vibiz platform creates an E2B sandbox from this image, seeds workspace data, and then asks OpenCode to edit `/home/user/app`. Your job is to turn the seeded template into a working, polished site while preserving the platform contracts below.
+
+## Load Project Skills
+
+Use the project-local OpenCode skills when the task touches their area:
+
+- `vibiz-payments` for pricing, offers, checkout, redirects, or payments.
+- `vibiz-site-quality` for landing pages, marketing sites, dashboards, visual polish, and brand adaptation.
+- `vibiz-runtime-repair` when the app fails to build, boot, render, authenticate, call AI routes, or deploy.
+
+## Hard Platform Contracts
+
+- `data/offers.json` is written by Vibiz during sandbox bootstrap and deploy. Do not edit, overwrite, reseed, or fabricate it.
+- Pricing must read offers through `src/lib/offers.ts` and render links using `offer.paymentLinkUrl`.
+- Customer sites are Stripe-free. Do not install the `stripe` package, create `lib/stripe.ts`, add `/api/stripe/*` routes, add checkout session code, or add `STRIPE_SECRET_KEY` anywhere.
+- Stripe checkout is handled by platform-minted Payment Links. Attribution and webhooks stay in the parent Vibiz app.
+- Do not change post-checkout redirect behavior. If a redirect looks wrong, call it out instead of patching around it in this template.
+- `NEXT_PUBLIC_VIBIZ_DEPLOY=1` marks Vibiz-managed deployments. Do not remove the guard that prevents placeholder pricing on managed sites.
+- Turso, Sapiom, and Better Auth env vars are provisioned by Vibiz. Do not mint keys manually, expose server keys to the browser, or commit real secrets.
+- `.env` and `.env.*` files are runtime-only. Only create or modify them when the user or parent Vibiz agent explicitly provides a non-Vibiz third-party key needed for the app to run. Never add Stripe keys.
+
+## Hard rules — DO NOT EDIT these files
+
+- `src/middleware.ts` — auth gating
+- `src/lib/auth.ts`, `src/lib/auth-client.ts` — better-auth wiring (unless explicitly asked to change auth)
+- `src/lib/api-guard.ts` — API protection
+- `src/lib/sapiom.ts` — AI provider gateway helper (extend by adding new routes that USE it; never modify it)
+- `src/components/VibizSelectBridge.tsx` — Vibiz dashboard select-element bridge
+- `src/app/api/auth/[...all]/route.ts` — better-auth route handler
+- `scripts/migrate.mjs` — DB migration runner
+- `next.config.ts`, `tsconfig.json`, `package.json`, `tailwind.config.ts`, `postcss.config.mjs` — only edit if the user explicitly asks for build / dep changes
+
+If a request seems to require touching one of the DO NOT EDIT items, prefer asking for clarification by writing the answer in plain language; do not edit silently.
 
 ## Single source of truth: `template.config.ts`
 
-90% of edits go here, NOT into components. The landing page reads brand,
-copy, hero, features, testimonials, pricing, FAQ, and dashboard sidebar
-items from a single typed object. Change the object → site updates.
+90% of edits go here, NOT into components. The landing page reads brand, copy, hero, features, testimonials, pricing, FAQ, and dashboard sidebar items from a single typed object. Change the object → site updates.
 
-Touch component files **only** when the user asks for new structure
-(new section, removed section, layout change). For copy/colors/fonts/
-features/items, edit `template.config.ts` and stop.
+Touch component files **only** when the user asks for new structure (new section, removed section, layout change). For copy/colors/fonts/features/items, edit `template.config.ts` and stop.
 
 ## File map (memorize this)
 
@@ -70,12 +95,7 @@ vibiz-saas/
 
 ## AI capabilities (via Sapiom) — build, don't import third-party SDKs
 
-The chassis already speaks to AI providers through a single secure gateway
-called **Sapiom**. Every AI call you add MUST go through `sapiomFetch()` +
-`sapiomUrl()` from `@/lib/sapiom`. NEVER `import OpenAI from "openai"`, fal
-SDK, or any direct provider SDK — the chassis won't have those keys; only
-`SAPIOM_API_KEY` is provisioned at deploy time. Direct provider SDKs will
-fail at runtime with "missing API key".
+The chassis already speaks to AI providers through a single secure gateway called **Sapiom**. Every AI call you add MUST go through `sapiomFetch()` + `sapiomUrl()` from `@/lib/sapiom`. NEVER `import OpenAI from "openai"`, fal SDK, or any direct provider SDK — the chassis won't have those keys; only `SAPIOM_API_KEY` is provisioned at deploy time. Direct provider SDKs will fail at runtime with "missing API key".
 
 ### The 4 services available
 
@@ -240,23 +260,6 @@ export async function POST(request: Request) {
 4. **Match the brand** — use `bg-[var(--brand-primary)]`, `font-heading`, etc. — never hardcoded hex.
 5. **NEVER** import `openai`, `@anthropic-ai/sdk`, `fal-client`, or any provider SDK. The runtime only has `SAPIOM_API_KEY` — direct provider SDKs WILL fail at runtime.
 
-## Hard rules — DO NOT EDIT these
-
-- `src/middleware.ts` — auth gating
-- `src/lib/auth.ts`, `src/lib/auth-client.ts` — better-auth wiring (unless explicitly asked to change auth)
-- `src/lib/api-guard.ts` — API key checks
-- `src/lib/sapiom.ts` — AI provider gateway helper (extend by adding new routes that USE it; never modify it)
-- `src/components/VibizSelectBridge.tsx` — Vibiz dashboard select-element bridge
-- `src/app/api/auth/[...all]/route.ts` — better-auth route handler
-- `scripts/migrate.mjs` — DB migration runner
-- `next.config.ts`, `tsconfig.json`, `package.json`, `tailwind.config.ts`, `postcss.config.mjs` — only edit if the user explicitly asks for build / dep changes
-
-The existing `src/app/api/ai/*` routes are fine to leave untouched and reference — only edit them if the user explicitly asks to change their behavior.
-
-If a request seems to require touching one of the DO NOT EDIT items, prefer
-asking for clarification by writing the answer in plain language; do not
-edit silently.
-
 ## Stack
 
 - **Framework:** Next.js 15 (App Router), React 19, TypeScript 5.7
@@ -268,13 +271,26 @@ edit silently.
 - **Package manager:** **npm** — `package-lock.json` present. DO NOT run `pnpm install` or `yarn`. Run `npm install` only if you genuinely added a dep.
 - **Dev server:** `npm run dev` (started automatically when the sandbox boots)
 
-## Editing conventions
+## Working rules & editing conventions
 
+- Before broad edits, read the files that define the current route/component/data flow. Do not assume this template matches a previous starter.
+- Keep changes focused on the user's requested outcome. Avoid unrelated rewrites, new frameworks, or decorative abstractions.
+- Prefer existing components and utilities in `src/components`, `src/lib`, and `template.config.ts`.
+- After code changes, run the narrowest useful verification first, then broaden if the touched surface is shared. At minimum use `npm run build` for app-shape changes.
+- If runtime is broken, inspect logs and patch the actual cause. Do not mask failures by deleting sections, disabling auth, bypassing redirects, or hardcoding fake data.
 - Use Tailwind classes; reference brand colors via `bg-[var(--brand-primary)]`, `text-[var(--brand-text)]`, etc. — never hardcode hex values in components.
 - Use `font-heading` / `font-body` Tailwind classes (mapped to brand fonts) instead of hardcoded `font-family`.
 - Prefer importing `config` from `@/lib/config` (re-export) over `../../template.config`.
 - Match existing icon convention: kebab-case `lucide-react` names in config; the component renders them.
 - Existing UI primitives are intentionally minimal. Don't introduce a UI lib (Radix, MUI, etc.) — extend the local primitives if you need new variants.
+
+## Frontend quality bar
+
+- Build the real customer-facing experience, not a generic template wrapper or instructions page.
+- Adapt copy, hierarchy, and visuals to the user's business and brand data. Avoid placeholder SaaS language when the prompt provides specifics.
+- Keep pages responsive and working on mobile and desktop. Text must fit its container and interactive elements must remain reachable.
+- Use the existing Tailwind v4 setup in `src/app/globals.css`. Do not add top-level `@apply` rules unless you have loaded the correct Tailwind reference context.
+- Use real links, working buttons, forms with honest behavior, and clear empty/error states. A polished but broken site is not done.
 
 ## Common pitfalls (avoid)
 
@@ -286,12 +302,14 @@ edit silently.
 
 ## When given vague asks
 
-If the user says "make it look professional / bolder / more SaaS-y", that
-typically means:
+If the user says "make it look professional / bolder / more SaaS-y", that typically means:
 - pick brand colors with stronger contrast (move `primary` to a confident hue, `accent` to its complement)
 - pick a more distinctive `heading` font from Google Fonts (e.g. `Geist`, `Manrope`, `Plus Jakarta Sans`)
 - tighten the hero headline to ≤8 words, action-led, outcome-focused
 - replace placeholder testimonials with industry-specific names + roles
 
-Do all of that in `template.config.ts` first, then check if any
-component-level adjustment is genuinely needed.
+Do all of that in `template.config.ts` first, then check if any component-level adjustment is genuinely needed.
+
+## E2B context
+
+The template image copies this repo to `/home/user/app`, installs dependencies, and starts `npm run dev -- -p 3000` from `e2b.toml`. New sandboxes receive the latest image after the E2B template rebuild workflow runs on `main`; already-running sandboxes keep the old image until they restart.
