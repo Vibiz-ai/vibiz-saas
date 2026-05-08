@@ -6,6 +6,15 @@ const nextConfig: NextConfig = {
       (process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL) ? "true" : "false",
   },
   serverExternalPackages: ["@libsql/kysely-libsql", "@libsql/client", "libsql"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

@@ -5,9 +5,18 @@ import { authEnabled } from "@/lib/auth-client";
 const authPaths = ["/login", "/signup", "/dashboard"];
 
 export function Footer() {
-  const links = authEnabled
+  const filtered = authEnabled
     ? config.footer.links
     : config.footer.links.filter((l) => !authPaths.includes(l.href));
+  // Dedupe by href: generated configs occasionally produce two entries
+  // pointing to the same anchor (e.g. "Pricing" + "Plans" both → #pricing),
+  // which would render two identical links AND trigger React duplicate-key warnings.
+  const seen = new Set<string>();
+  const links = filtered.filter((l) => {
+    if (seen.has(l.href)) return false;
+    seen.add(l.href);
+    return true;
+  });
 
   return (
     <footer className="border-t border-gray-100 py-12">
