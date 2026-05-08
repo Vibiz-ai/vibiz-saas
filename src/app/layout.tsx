@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/config";
 import { VibizSelectBridge } from "@/components/VibizSelectBridge";
-import { ChatFab } from "@/components/landing/chat-fab";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,7 +30,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         {children}
-        <ChatFab />
         <VibizSelectBridge />
       </body>
     </html>
