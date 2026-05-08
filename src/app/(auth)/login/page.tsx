@@ -1,14 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+function redirectTarget() {
+  const target = new URLSearchParams(window.location.search).get("redirect");
+  if (target?.startsWith("/") && !target.startsWith("//")) return target;
+  return "/dashboard";
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    setQuery(window.location.search);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +27,7 @@ export default function LoginPage() {
     setError("");
     try {
       await signIn.email({ email, password });
-      window.location.href = "/dashboard";
+      window.location.href = redirectTarget();
     } catch {
       setError("Invalid email or password");
     }
@@ -36,7 +47,7 @@ export default function LoginPage() {
         </Button>
       </form>
       <p className="text-center text-sm text-gray-500 mt-6">
-        Don&apos;t have an account? <a href="/signup" className="text-brand-primary font-medium hover:underline">Sign up</a>
+        Don&apos;t have an account? <a href={`/signup${query}`} className="text-brand-primary font-medium hover:underline">Sign up</a>
       </p>
     </div>
   );
