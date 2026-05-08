@@ -1,5 +1,8 @@
 import { createClient, type Client } from "@libsql/client";
-import type { VibizEntitlementData } from "./vibiz-runtime";
+import {
+  checkVibizEntitlement,
+  type VibizEntitlementData,
+} from "./vibiz-runtime";
 
 const dbUrl = process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL;
 let client: Client | null = null;
@@ -103,11 +106,12 @@ export async function storeLocalEntitlement(
 export async function hasLocalEntitlement(
   userId: string,
   entitlementKey: string,
+  localBuyerEmail?: string | null,
 ): Promise<boolean> {
   await ensureEntitlementsTable();
   const result = await entitlementDb().execute({
     sql: `
-      SELECT status, expires_at
+      SELECT status, expires_at, vibiz_entitlement_id, buyer_email
       FROM vibiz_entitlements
       WHERE user_id = ? AND entitlement_key = ?
       LIMIT 1
@@ -115,17 +119,48 @@ export async function hasLocalEntitlement(
     args: [userId, entitlementKey],
   });
   const row = result.rows[0] as
-    | { status?: string; expires_at?: string | null }
+    | {
+        status?: string;
+        expires_at?: string | null;
+        vibiz_entitlement_id?: string;
+        buyer_email?: string | null;
+      }
     | undefined;
   if (!row || row.status !== "active") return false;
-  if (!row.expires_at) return true;
-  return new Date(row.expires_at).getTime() > Date.now();
+  if (!row.vibiz_entitlement_id) return false;
+
+  try {
+    const check = await checkVibizEntitlement(
+      row.vibiz_entitlement_id,
+      localBuyerEmail ?? row.buyer_email,
+    );
+    const expiresAt = check.expiresAt ?? row.expires_at ?? null;
+    await entitlementDb().execute({
+      sql: `
+        UPDATE vibiz_entitlements
+        SET status = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ? AND entitlement_key = ?
+      `,
+      args: [
+        check.active ? "active" : (check.status ?? "revoked"),
+        expiresAt,
+        userId,
+        entitlementKey,
+      ],
+    });
+    if (!check.active) return false;
+    if (!expiresAt) return true;
+    return new Date(expiresAt).getTime() > Date.now();
+  } catch {
+    return false;
+  }
 }
 
 export async function requireEntitlement(
   userId: string,
   entitlementKey: string,
+  localBuyerEmail?: string | null,
 ) {
-  const ok = await hasLocalEntitlement(userId, entitlementKey);
+  const ok = await hasLocalEntitlement(userId, entitlementKey, localBuyerEmail);
   if (!ok) throw new Error(`Missing entitlement: ${entitlementKey}`);
 }

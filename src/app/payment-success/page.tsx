@@ -50,8 +50,8 @@ export default async function PaymentSuccessPage({
   }
 
   try {
-    const entitlement = await claimVibizEntitlement(claim);
     const sessionEmail = session.user.email?.toLowerCase();
+    const entitlement = await claimVibizEntitlement(claim, sessionEmail);
     const buyerEmail = entitlement.buyerEmail?.toLowerCase();
     if (buyerEmail && sessionEmail && buyerEmail !== sessionEmail) {
       return (

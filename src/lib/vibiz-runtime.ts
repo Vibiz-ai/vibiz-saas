@@ -20,6 +20,14 @@ interface ClaimResponse {
   error?: string;
 }
 
+interface EntitlementCheckResponse {
+  active: boolean;
+  status?: string;
+  expiresAt?: string | null;
+  reason?: string | null;
+  error?: string;
+}
+
 function runtimeBaseUrl(): string {
   return (
     process.env.VIBIZ_RUNTIME_BASE_URL ??
@@ -30,11 +38,12 @@ function runtimeBaseUrl(): string {
 
 export async function claimVibizEntitlement(
   claim: string,
+  localBuyerEmail?: string | null,
 ): Promise<VibizEntitlementData> {
   const response = await fetch(`${runtimeBaseUrl()}/api/runtime/entitlements/claim`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ claim }),
+    body: JSON.stringify({ claim, localBuyerEmail }),
     cache: "no-store",
   });
   const data = (await response.json()) as ClaimResponse;
@@ -44,3 +53,19 @@ export async function claimVibizEntitlement(
   return data.entitlement;
 }
 
+export async function checkVibizEntitlement(
+  vibizEntitlementId: string,
+  localBuyerEmail?: string | null,
+): Promise<EntitlementCheckResponse> {
+  const response = await fetch(`${runtimeBaseUrl()}/api/runtime/entitlements/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ vibizEntitlementId, localBuyerEmail }),
+    cache: "no-store",
+  });
+  const data = (await response.json()) as EntitlementCheckResponse;
+  if (!response.ok) {
+    throw new Error(data.reason ?? data.error ?? "check_failed");
+  }
+  return data;
+}

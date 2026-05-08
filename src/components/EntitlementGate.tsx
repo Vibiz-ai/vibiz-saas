@@ -17,6 +17,10 @@ export async function EntitlementGate({
     : null;
   if (!session?.user?.id) return fallback;
 
-  const unlocked = await hasLocalEntitlement(session.user.id, entitlementKey);
+  const unlocked = await hasLocalEntitlement(
+    session.user.id,
+    entitlementKey,
+    session.user.email,
+  );
   return unlocked ? children : fallback;
 }
