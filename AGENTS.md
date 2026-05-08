@@ -14,10 +14,10 @@ Use the project-local OpenCode skills when the task touches their area:
 
 - `data/offers.json` is written by Vibiz during sandbox bootstrap and deploy. Do not edit, overwrite, reseed, or fabricate it.
 - Pricing must read offers through `src/lib/offers.ts` and render links using `offer.paymentLinkUrl`.
-- Paid app features must use the entitlement helpers in `src/lib/entitlements.ts` and the seeded `offer.entitlementKey`; do not invent a separate paid-user table or call Stripe directly.
+- Paid app features must use the entitlement helpers in `src/lib/entitlements.ts` and the seeded `offer.entitlementKey`; do not invent a separate paid-user table, bypass Vibiz runtime revalidation, or call Stripe directly.
 - Customer sites are Stripe-free. Do not install the `stripe` package, create `lib/stripe.ts`, add `/api/stripe/*` routes, add checkout session code, or add `STRIPE_SECRET_KEY` anywhere.
 - Stripe checkout is handled by platform-minted Payment Links. Attribution and webhooks stay in the parent Vibiz app.
-- Do not change post-checkout redirect behavior. Stripe returns buyers to `/payment-success?claim=...`, which exchanges the Vibiz claim and stores a local entitlement.
+- Do not change post-checkout redirect behavior. Stripe returns buyers to `/payment-success?claim=...`, which exchanges the Vibiz claim, stores a local entitlement, and revalidates that entitlement with Vibiz before unlocking paid features on future visits.
 - `NEXT_PUBLIC_VIBIZ_DEPLOY=1` marks Vibiz-managed deployments. Do not remove the guard that prevents placeholder pricing on managed sites.
 - Turso, Sapiom, and Better Auth env vars are provisioned by Vibiz. Do not mint keys manually, expose server keys to the browser, or commit real secrets.
 - `.env` and `.env.*` files are runtime-only. Only create or modify them when the user or parent Vibiz agent explicitly provides a non-Vibiz third-party key needed for the app to run. Never add Stripe keys.
