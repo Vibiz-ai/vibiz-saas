@@ -2,24 +2,49 @@
 
 Minimal one-time purchase flow for a generated Vibiz app.
 
-```mermaid
-flowchart LR
-  A["1. Buyer clicks paid offer"]
-  B["2. Stripe Checkout"]
-  C["3. Stripe webhook records payment in Vibiz"]
-  D["4. Stripe redirects browser to Vibiz /post-checkout"]
-  E["5. Vibiz verifies paid session"]
-  F["6. Vibiz redirects buyer back to generated app"]
-  G["7. Generated app stores entitlement for logged-in buyer"]
-  H["8. Future visits unlock from local entitlement"]
-
-  A --> B
-  B --> C
-  B --> D
-  D --> E
-  E --> F
-  F --> G
-  G --> H
+```text
++---------------------------+
+| 1. Buyer clicks paid offer |
+|    in generated app        |
++-------------+-------------+
+              |
+              v
++---------------------------+
+| 2. Buyer pays in Stripe    |
+|    Checkout                |
++------+------+-------------+
+       |      |
+       |      +-----------------------------+
+       v                                    v
++---------------------------+   +---------------------------+
+| 3. Stripe webhook records  |   | 4. Stripe redirects       |
+|    payment in Vibiz        |   |    browser to Vibiz       |
++---------------------------+   |    /post-checkout          |
+                                +-------------+-------------+
+                                              |
+                                              v
+                                +---------------------------+
+                                | 5. Vibiz verifies paid    |
+                                |    Checkout Session       |
+                                +-------------+-------------+
+                                              |
+                                              v
+                                +---------------------------+
+                                | 6. Vibiz redirects buyer  |
+                                |    back to generated app  |
+                                +-------------+-------------+
+                                              |
+                                              v
+                                +---------------------------+
+                                | 7. Generated app stores   |
+                                |    local paid entitlement |
+                                +-------------+-------------+
+                                              |
+                                              v
+                                +---------------------------+
+                                | 8. Future visits unlock   |
+                                |    from local entitlement |
+                                +---------------------------+
 ```
 
 Notes:
