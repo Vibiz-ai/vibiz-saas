@@ -17,9 +17,10 @@ Minimal one-time purchase flow for a generated Vibiz app.
        |      +-----------------------------+
        v                                    v
 +---------------------------+   +---------------------------+
-| 3. Stripe webhook records  |   | 4. Stripe redirects       |
-|    payment in Vibiz        |   |    browser to Vibiz       |
-+---------------------------+   |    /post-checkout          |
+| 3. Stripe webhook records  |   | 4. Browser opens          |
+|    payment in Vibiz        |   |    https://vibiz.ai/      |
++---------------------------+   |    post-checkout?         |
+                                |    session_id=cs_...       |
                                 +-------------+-------------+
                                               |
                                               v
@@ -49,6 +50,6 @@ Minimal one-time purchase flow for a generated Vibiz app.
 
 Notes:
 
-- `/post-checkout` is not called by our frontend. Stripe redirects the buyer's browser there after checkout because Vibiz configures it on the Payment Link.
+- `https://vibiz.ai/post-checkout?session_id=cs_...` is not called by our frontend. Stripe sends the buyer's browser directly to that URL after checkout because Vibiz configures it on the Payment Link.
 - The webhook and redirect are separate. The webhook records the payment; the redirect returns the buyer to the generated app.
 - Today, `/post-checkout` verifies payment and redirects with a success marker. The proposed next step is to redirect with a short-lived claim so the generated app can safely store local paid access.
