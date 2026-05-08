@@ -1,9 +1,15 @@
 "use client";
-import { useState } from "react";
-import { signUp } from "@/lib/auth-client";
+import { useEffect, useState } from "react";
+import { signIn, signUp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { config } from "@/lib/config";
+
+function redirectTarget() {
+  const target = new URLSearchParams(window.location.search).get("redirect");
+  if (target?.startsWith("/") && !target.startsWith("//")) return target;
+  return "/dashboard";
+}
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -11,6 +17,11 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    setQuery(window.location.search);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +29,8 @@ export default function SignupPage() {
     setError("");
     try {
       await signUp.email({ name, email, password });
-      window.location.href = "/dashboard";
+      await signIn.email({ email, password });
+      window.location.href = redirectTarget();
     } catch {
       setError("Could not create account. Try a different email.");
     }
@@ -39,7 +51,7 @@ export default function SignupPage() {
         </Button>
       </form>
       <p className="text-center text-sm text-gray-500 mt-6">
-        Already have an account? <a href="/login" className="text-brand-primary font-medium hover:underline">Sign in</a>
+        Already have an account? <a href={`/login${query}`} className="text-brand-primary font-medium hover:underline">Sign in</a>
       </p>
     </div>
   );

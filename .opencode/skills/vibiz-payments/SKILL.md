@@ -11,6 +11,10 @@ The customer site must stay Stripe-free. Vibiz owns Stripe products, prices, Pay
 Before editing payment surfaces, read:
 
 - `src/lib/offers.ts`
+- `src/lib/entitlements.ts`
+- `src/lib/vibiz-runtime.ts`
+- `src/components/EntitlementGate.tsx`
+- `src/app/payment-success/page.tsx`
 - `src/components/landing/pricing.tsx`
 - `data/offers.json`
 - `template.config.ts`
@@ -22,6 +26,8 @@ Rules:
 - Never add `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, or secret Stripe values to any file.
 - Never modify `data/offers.json`; it is seeded by Vibiz on sandbox bootstrap and deploy.
 - Render real checkout CTAs with `href={offer.paymentLinkUrl}` when seeded offers exist.
+- Gate paid post-checkout features with `offer.entitlementKey`, `src/components/EntitlementGate.tsx`, or the helpers in `src/lib/entitlements.ts`; those helpers revalidate the local entitlement with Vibiz before unlocking.
+- Keep `/payment-success?claim=...` as the Vibiz claim exchange route. It calls the Vibiz runtime claim endpoint, stores the returned entitlement locally, and future visits unlock only after Vibiz runtime revalidation succeeds.
 - Keep the `NEXT_PUBLIC_VIBIZ_DEPLOY === "1"` behavior: Vibiz-managed deployments must not show placeholder pricing when offers are missing.
 - If offers are empty on a Vibiz-managed deployment, show a truthful empty state instead of fake tiers.
 

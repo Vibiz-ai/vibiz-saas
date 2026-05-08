@@ -19,6 +19,8 @@ export interface Offer {
   priceCurrency: string;
   iconEmoji: string | null;
   paymentLinkUrl: string;
+  entitlementKey: string;
+  entitlementType: "one_time" | "subscription";
   position: number;
 }
 
@@ -33,7 +35,7 @@ export async function getSeededOffers(): Promise<Offer[]> {
     const raw = await fs.readFile(OFFERS_PATH, "utf-8");
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidOffer);
+    return parsed.filter(isValidOffer).map(normalizeOffer);
   } catch {
     // File missing on a fresh clone, or unreadable. Either way: caller renders
     // the template static fallback.
@@ -51,7 +53,30 @@ const STRIPE_URL_PREFIXES = [
   "https://checkout.stripe.com/",
 ];
 
-function isValidOffer(o: unknown): o is Offer {
+type RawOffer = Omit<Offer, "entitlementKey" | "entitlementType"> &
+  Partial<Pick<Offer, "entitlementKey" | "entitlementType">>;
+
+function fallbackEntitlementKey(offer: Pick<Offer, "id" | "title">): string {
+  const slug = offer.title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+  const suffix = offer.id.replace(/-/g, "").slice(0, 8) || "offer";
+  return `${slug || "offer"}_${suffix}`;
+}
+
+function normalizeOffer(offer: RawOffer): Offer {
+  return {
+    ...offer,
+    entitlementKey: offer.entitlementKey || fallbackEntitlementKey(offer),
+    entitlementType:
+      offer.entitlementType === "subscription" ? "subscription" : "one_time",
+  };
+}
+
+function isValidOffer(o: unknown): o is RawOffer {
   if (!o || typeof o !== "object") return false;
   const x = o as Record<string, unknown>;
   if (
