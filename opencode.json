@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-5",
+  "small_model": "anthropic/claude-haiku-4-5",
+  "snapshot": false,
+  "provider": {
+    "anthropic": {
+      "options": {
+        "setCacheKey": true,
+        "timeout": 600000,
+        "chunkTimeout": 30000
+      }
+    }
+  },
+  "tools": {
+    "webfetch": false,
+    "websearch": false
+  }
+}

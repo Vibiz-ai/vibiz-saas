@@ -172,7 +172,6 @@ export const config = {
   dashboard: {
     sidebarItems: [
       { label: "Home", href: "/dashboard", icon: "home" },
-      { label: "AI Playground", href: "/dashboard/ai", icon: "sparkles" },
       { label: "Settings", href: "/dashboard/settings", icon: "settings" },
       { label: "Billing", href: "/dashboard/billing", icon: "credit-card" },
     ],
