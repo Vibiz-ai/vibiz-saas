@@ -28,6 +28,7 @@ Next sandbox-deploy in vibiz/ uses the fresh image
 | `e2bdev/code-interpreter:latest` base | Node 22, git, curl, build tools, `user` non-root account |
 | `opencode` CLI on PATH | Autonomous multi-file edits via `sandbox_run_opencode` from the agent |
 | Repo source at `/home/user/app` | Result of `COPY . /home/user/app` filtered by `.dockerignore` |
+| `AGENTS.md` + `.opencode/` | Project rules, config, and skills loaded by OpenCode inside the sandbox |
 | Pre-installed `node_modules` | Saves 60–120s per boot |
 | Warm Next build cache | Faster first HMR (skipped if `npm run build` needs runtime env) |
 
