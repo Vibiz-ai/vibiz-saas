@@ -9,6 +9,14 @@ const IconRegistry = Icons as unknown as IconMap;
 
 export function Sidebar() {
   const pathname = usePathname();
+  // Dedupe by href so generated configs with duplicate entries don't render
+  // twice or trigger React duplicate-key warnings.
+  const seenHrefs = new Set<string>();
+  const dedupedSidebarItems = config.dashboard.sidebarItems.filter((i) => {
+    if (seenHrefs.has(i.href)) return false;
+    seenHrefs.add(i.href);
+    return true;
+  });
 
   return (
     <aside className="w-64 border-r border-gray-100 bg-gray-50/50 min-h-screen p-4">
@@ -16,7 +24,7 @@ export function Sidebar() {
         <span className="font-heading font-bold">{config.product.name}</span>
       </div>
       <nav className="space-y-1">
-        {config.dashboard.sidebarItems.map((item) => {
+        {dedupedSidebarItems.map((item) => {
           const key =
             item.icon.charAt(0).toUpperCase() +
             item.icon.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
