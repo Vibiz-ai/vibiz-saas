@@ -23,7 +23,13 @@ import {
 
 export const runtime = "nodejs";
 
-const APP_DIR = "/home/user/app";
+// Allow override via RUNNER_APP_DIR (used by smoke scripts + local dev
+// outside the E2B image where /home/user/app doesn't exist). Mirrors
+// getAppDir() in apply-config-patch + current-config routes.
+function getAppDir(): string {
+  return process.env.RUNNER_APP_DIR || "/home/user/app";
+}
+
 const RUNNER_VERSION = "0.1.0";
 const DEV_SERVER_PORT = 3000;
 
@@ -49,7 +55,7 @@ export async function POST(req: Request): Promise<Response> {
     );
 
     try {
-      const { initialized, headSha } = await ensureGitRepo(APP_DIR);
+      const { initialized, headSha } = await ensureGitRepo(getAppDir());
       console.log(
         `[Runner:claim] orgId=${auth.orgId} sandboxId=${auth.sandboxId} initialized=${initialized} headSha=${headSha.slice(0, 12)}`,
       );

@@ -79,7 +79,15 @@ function runGit(
     execFile(
       "git",
       [...GIT_SAFE_DIRECTORY_FLAGS, ...args],
-      { cwd, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+      {
+        cwd,
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+        // Explicitly forward env so PATH (and any tests' RUNNER_APP_DIR
+        // overrides) make it through. Some Next.js bundling contexts
+        // strip the inherited env from execFile defaults.
+        env: process.env,
+      },
       (error, stdout, stderr) => {
         // `encoding: "utf8"` above narrows both stdout and stderr to string.
         if (error) {
