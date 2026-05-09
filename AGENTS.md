@@ -47,7 +47,7 @@ These files are the wire contract between the vibiz platform and the in-sandbox 
 - `src/lib/template-config.schema.test.ts` — smoke test (run via `npm run schema:test`): asserts the runtime config parses, that required fields are required, and that `.strict()` rejects unknown root keys.
 - `src/lib/runner-auth.ts` — ES256 JWT verifier for `/api/internal/runner/*`. Signer is `vibiz/lib/services/sandbox/runner-jwt.ts`; payload shape (`sub`, `sandboxId`, `scope: 'runner'`, `iat`, `exp`) is the wire contract. Public key read lazily from `VIBIZ_RUNNER_PUBLIC_KEY` (PEM SPKI). Algorithm is whitelisted to `['ES256']` — do not loosen.
 - `src/lib/runner-auth.test.ts` — smoke test (run via `npm run runner-auth:test`): generates a fresh ES256 keypair per run and mints tokens inline mirroring the upstream signer, then exercises the verifier across happy + 5 failure paths.
-- `src/lib/runner-types.ts` — zod request/response schemas for every `/api/internal/runner/*` endpoint (claim, apply-config-patch, apply-file-patch, apply-multi-patch, git-revert, build-status). Shared with the vibiz-side runner client SDK; both sides parse against these so the contract is enforced symmetrically. Add new endpoints by appending request/response schemas here (with `.strict()`) before wiring the route handler.
+- `src/lib/runner-types.ts` — zod request/response schemas for every `/api/internal/runner/*` endpoint (claim, current-config, apply-config-patch, apply-file-patch, apply-multi-patch, git-revert, snapshot, restore, build-status). Shared with the vibiz-side runner client SDK; both sides parse against these so the contract is enforced symmetrically. Add new endpoints by appending request/response schemas here (with `.strict()`) before wiring the route handler.
 - `src/lib/runner-types.test.ts` — smoke test (run via `npm run runner-types:test`): exercises every request schema with a happy + invalid payload to fail loud if a schema is loosened or a discriminator drops.
 - `src/app/api/internal/runner/**` — runner route tree. Each handler:
   - Sets `export const runtime = 'nodejs'` (the route uses `child_process`, `fs/promises`, and ES256 verification — Edge runtime won't work).
@@ -55,6 +55,13 @@ These files are the wire contract between the vibiz platform and the in-sandbox 
   - Validates the body against the matching zod schema in `src/lib/runner-types.ts`; returns 400 on shape mismatch.
   - Logs with bracket-prefix `[Runner:<endpointName>]` carrying `orgId` and `sandboxId` for cross-repo traceability.
   These routes are called by the parent vibiz orchestrator. They are NOT for end-user use. Do not expose them publicly, do not add auth bypasses, do not add CORS for browser origins.
+  Endpoints under this tree:
+  - `/claim` — boot/initialize the workspace repo on session start.
+  - `/current-config` — read + parse the live `template.config.ts`.
+  - `/apply-config-patch`, `/apply-file-patch`, `/apply-multi-patch`, `/git-revert` — mutating ops.
+  - `/snapshot` — tar the working tree (excluding `node_modules`, `.next`, `.next-cache`) and PUT to a Supabase Storage signed upload URL minted by the orchestrator. The runner holds zero Supabase credentials. Pre-flight requires a clean working tree.
+  - `/restore` — fetch a previously-uploaded snapshot from a signed download URL and extract on top of `RUNNER_APP_DIR`. Replaces the template's pristine commit with the workspace's git history. `node_modules/` is preserved across restore (it is not in the tarball).
+  - `/build-status` — SSE stream of dev-server build state.
 - `dist-schema/` — auto-generated; do not hand-edit. Regenerate via `npm run schema:export` after every schema change. Contents are committed (not gitignored) so the vibiz parity check can diff against `main`.
 
 Workflow when changing a field: edit `template-config.schema.ts` → run `npm run schema:test` → run `npm run schema:export` → commit `src/lib/template-config.schema.ts` + `dist-schema/*` together. The vibiz PR that consumes the new shape comes second (it copies the regenerated artifacts in via `pnpm sandbox:sync-types`).

@@ -18,7 +18,12 @@ import {
   ClaimRequestSchema,
   ClaimResponseSchema,
   ConfigOpSchema,
+  CurrentConfigResponseSchema,
+  FileReadResponseSchema,
   GitRevertRequestSchema,
+  RestoreRequestSchema,
+  RestoreResponseSchema,
+  SnapshotRequestSchema,
 } from "./runner-types.ts";
 
 type CheckFn = () => void;
@@ -142,6 +147,23 @@ check("ConfigOp rejects unknown op", () => {
   assert(!r.success, "expected parse to fail");
 });
 
+// --- /current-config -----------------------------------------------------
+
+check("CurrentConfigResponse accepts arbitrary config object + sha", () => {
+  const r = CurrentConfigResponseSchema.safeParse({
+    config: { product: { name: "Acme" }, brand: { primaryColor: "#7c3aed" } },
+    sha: "deadbeef",
+  });
+  assert(r.success, "expected parse to succeed");
+});
+
+check("CurrentConfigResponse rejects missing sha", () => {
+  const r = CurrentConfigResponseSchema.safeParse({
+    config: { product: { name: "Acme" } },
+  });
+  assert(!r.success, "expected parse to fail");
+});
+
 // --- /apply-config-patch -------------------------------------------------
 
 check("ApplyConfigPatchRequest accepts a non-empty op list", () => {
@@ -164,6 +186,26 @@ check("ApplyConfigPatchRequest rejects missing summary", () => {
   const r = ApplyConfigPatchRequestSchema.safeParse({
     operations: [{ op: "set", path: "x", value: 1 }],
   });
+  assert(!r.success, "expected parse to fail");
+});
+
+// --- /file (GET) ---------------------------------------------------------
+
+check("FileReadResponse accepts contents + sha", () => {
+  const r = FileReadResponseSchema.safeParse({
+    contents: "export const x = 1\n",
+    sha: "deadbeef",
+  });
+  assert(r.success, "expected parse to succeed");
+});
+
+check("FileReadResponse accepts empty contents string", () => {
+  const r = FileReadResponseSchema.safeParse({ contents: "", sha: "abc" });
+  assert(r.success, "expected parse to succeed");
+});
+
+check("FileReadResponse rejects missing sha", () => {
+  const r = FileReadResponseSchema.safeParse({ contents: "x" });
   assert(!r.success, "expected parse to fail");
 });
 
@@ -218,6 +260,35 @@ check("GitRevertRequest accepts a sha string", () => {
 check("GitRevertRequest rejects missing sha", () => {
   const r = GitRevertRequestSchema.safeParse({});
   assert(!r.success, "expected parse to fail");
+});
+
+// --- /snapshot -----------------------------------------------------------
+
+check("SnapshotRequest accepts a valid https uploadUrl", () => {
+  const r = SnapshotRequestSchema.safeParse({
+    uploadUrl: "https://example.supabase.co/storage/v1/upload/sign/x?token=abc",
+  });
+  assert(r.success, "expected parse to succeed");
+});
+
+check("SnapshotRequest rejects a non-URL string", () => {
+  const r = SnapshotRequestSchema.safeParse({ uploadUrl: "not-a-url" });
+  assert(!r.success, "expected parse to fail");
+});
+
+// --- /restore ------------------------------------------------------------
+
+check("RestoreRequest accepts a valid https downloadUrl", () => {
+  const r = RestoreRequestSchema.safeParse({
+    downloadUrl:
+      "https://example.supabase.co/storage/v1/object/sign/bucket/key?token=abc",
+  });
+  assert(r.success, "expected parse to succeed");
+});
+
+check("RestoreResponse accepts ok=true with headSha", () => {
+  const r = RestoreResponseSchema.safeParse({ ok: true, headSha: "deadbeef" });
+  assert(r.success, "expected parse to succeed");
 });
 
 // --- /build-status (SSE event payload) -----------------------------------

@@ -49,6 +49,22 @@ export const ClaimResponseSchema = z.discriminatedUnion("ready", [
 ]);
 export type ClaimResponse = z.infer<typeof ClaimResponseSchema>;
 
+// --- /current-config -----------------------------------------------------
+
+// GET response shape for `/api/internal/runner/current-config`. The chassis
+// reads + evaluates `template.config.ts` and returns the parsed `config`
+// object plus the current git HEAD sha for caching/reproducibility. We
+// keep `config` as `z.unknown()` here because the structural validation
+// against `TemplateConfigSchema` is the chassis's job at write-time; the
+// vibiz-side client re-validates this against the same schema after fetch.
+export const CurrentConfigResponseSchema = z
+  .object({
+    config: z.unknown(),
+    sha: z.string().min(1),
+  })
+  .strict();
+export type CurrentConfigResponse = z.infer<typeof CurrentConfigResponseSchema>;
+
 // --- /apply-config-patch -------------------------------------------------
 
 export const ConfigOpSchema = z.discriminatedUnion("op", [
@@ -85,6 +101,21 @@ export const ApplyConfigPatchRequestSchema = z
 export type ApplyConfigPatchRequest = z.infer<
   typeof ApplyConfigPatchRequestSchema
 >;
+
+// --- /file (GET) ---------------------------------------------------------
+
+// GET response shape for `/api/internal/runner/file?path=...`. Reads an
+// arbitrary file from `RUNNER_APP_DIR` and returns its UTF-8 contents
+// plus the current git HEAD sha (used by the vibiz orchestrator as
+// version context for the LLM diff prompt). Path validation lives in
+// the route — schema only constrains the response shape here.
+export const FileReadResponseSchema = z
+  .object({
+    contents: z.string(),
+    sha: z.string().min(1),
+  })
+  .strict();
+export type FileReadResponse = z.infer<typeof FileReadResponseSchema>;
 
 // --- /apply-file-patch ---------------------------------------------------
 
@@ -129,6 +160,47 @@ export const GitRevertRequestSchema = z
   })
   .strict();
 export type GitRevertRequest = z.infer<typeof GitRevertRequestSchema>;
+
+// --- /snapshot -----------------------------------------------------------
+
+// Tarball snapshot upload. The orchestrator pre-signs a Supabase Storage
+// PUT URL (private bucket), the runner streams a `.tar.gz` of the workspace
+// to that URL. No Supabase credentials live in the sandbox — the signed
+// URL is the entire authorization.
+export const SnapshotRequestSchema = z
+  .object({
+    uploadUrl: z.string().url(),
+  })
+  .strict();
+export type SnapshotRequest = z.infer<typeof SnapshotRequestSchema>;
+
+export const SnapshotResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    sizeBytes: z.number(),
+  })
+  .strict();
+export type SnapshotResponse = z.infer<typeof SnapshotResponseSchema>;
+
+// --- /restore ------------------------------------------------------------
+
+// Pull a previously-uploaded snapshot back into the sandbox. The
+// orchestrator pre-signs a Supabase Storage GET URL; the runner fetches
+// it, extracts onto `RUNNER_APP_DIR`, and reports the restored HEAD.
+export const RestoreRequestSchema = z
+  .object({
+    downloadUrl: z.string().url(),
+  })
+  .strict();
+export type RestoreRequest = z.infer<typeof RestoreRequestSchema>;
+
+export const RestoreResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    headSha: z.string(),
+  })
+  .strict();
+export type RestoreResponse = z.infer<typeof RestoreResponseSchema>;
 
 // --- /build-status (SSE) -------------------------------------------------
 
