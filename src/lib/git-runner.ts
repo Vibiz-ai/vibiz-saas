@@ -56,6 +56,17 @@ class GitCommandError extends Error {
   }
 }
 
+// Inline safe.directory wildcard — the in-sandbox /home/user/app/.git is
+// owned by root (template build) but the runner route handler may run as
+// a different uid depending on Next.js worker spawn. Modern git refuses
+// to operate on a repo whose ownership doesn't match the running uid
+// ("dubious ownership"). Prepending `-c safe.directory=*` whitelists any
+// directory for the current invocation without persisting global config.
+const GIT_SAFE_DIRECTORY_FLAGS: ReadonlyArray<string> = [
+  "-c",
+  "safe.directory=*",
+];
+
 /**
  * Promise wrapper around `execFile('git', args, { cwd })`.
  * Throws `GitCommandError` with stdout+stderr captured on non-zero exit.
@@ -67,7 +78,7 @@ function runGit(
   return new Promise((resolve, reject) => {
     execFile(
       "git",
-      args.slice(),
+      [...GIT_SAFE_DIRECTORY_FLAGS, ...args],
       { cwd, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
       (error, stdout, stderr) => {
         // `encoding: "utf8"` above narrows both stdout and stderr to string.
