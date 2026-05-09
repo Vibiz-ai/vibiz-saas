@@ -27,6 +27,9 @@ Use the project-local OpenCode skills when the task touches their area:
 - `src/middleware.ts` — auth gating
 - `src/lib/auth.ts`, `src/lib/auth-client.ts` — better-auth wiring (unless explicitly asked to change auth)
 - `src/lib/api-guard.ts` — API protection
+- `src/lib/runner-auth.ts` — Sandbox v2 runner JWT verifier; wire contract with the vibiz orchestrator (coordinate any change with vibiz)
+- `src/lib/runner-types.ts` — Sandbox v2 zod request/response schemas for `/api/_internal/runner/*`; shared wire contract with the vibiz runner client
+- `src/app/api/_internal/runner/**` — Sandbox v2 runner route tree; called by the parent vibiz orchestrator over JWT-authed HTTPS. NOT for end-user use. Do not expose them publicly, do not add auth bypasses, do not add CORS for browser origins.
 - `src/lib/sapiom.ts` — AI provider gateway helper (extend by adding new routes that USE it; never modify it)
 - `src/components/VibizSelectBridge.tsx` — Vibiz dashboard select-element bridge
 - `src/app/api/auth/[...all]/route.ts` — better-auth route handler
@@ -35,11 +38,34 @@ Use the project-local OpenCode skills when the task touches their area:
 
 If a request seems to require touching one of the DO NOT EDIT items, prefer asking for clarification by writing the answer in plain language; do not edit silently.
 
+## Sandbox v2 contracts (DO NOT EDIT silently — coordinate with vibiz)
+
+These files are the wire contract between the vibiz platform and the in-sandbox runner API. Editing them changes a cross-repo schema; the vibiz repo commits a generated copy of the artifacts and runs a parity check in CI. See `vibiz/docs/sandbox-v2-types-sharing.md` (decision C) for the full flow.
+
+- `src/lib/template-config.schema.ts` — zod schema for the `TemplateConfig` payload accepted by the runner. Source of truth. Mirror of the runtime shape in `template.config.ts`. Adding/renaming fields is a breaking change; bump `schemaVersion` and ping the vibiz side.
+- `scripts/export-schema.ts` — codegen entry point. Run via `npm run schema:export`. Emits `dist-schema/template-config.schema.json` (JSON Schema 7) and `dist-schema/template-config.types.d.ts`.
+- `src/lib/template-config.schema.test.ts` — smoke test (run via `npm run schema:test`): asserts the runtime config parses, that required fields are required, and that `.strict()` rejects unknown root keys.
+- `src/lib/runner-auth.ts` — ES256 JWT verifier for `/api/_internal/runner/*`. Signer is `vibiz/lib/services/sandbox/runner-jwt.ts`; payload shape (`sub`, `sandboxId`, `scope: 'runner'`, `iat`, `exp`) is the wire contract. Public key read lazily from `VIBIZ_RUNNER_PUBLIC_KEY` (PEM SPKI). Algorithm is whitelisted to `['ES256']` — do not loosen.
+- `src/lib/runner-auth.test.ts` — smoke test (run via `npm run runner-auth:test`): generates a fresh ES256 keypair per run and mints tokens inline mirroring the upstream signer, then exercises the verifier across happy + 5 failure paths.
+- `src/lib/runner-types.ts` — zod request/response schemas for every `/api/_internal/runner/*` endpoint (claim, apply-config-patch, apply-file-patch, apply-multi-patch, git-revert, build-status). Shared with the vibiz-side runner client SDK; both sides parse against these so the contract is enforced symmetrically. Add new endpoints by appending request/response schemas here (with `.strict()`) before wiring the route handler.
+- `src/lib/runner-types.test.ts` — smoke test (run via `npm run runner-types:test`): exercises every request schema with a happy + invalid payload to fail loud if a schema is loosened or a discriminator drops.
+- `src/app/api/_internal/runner/**` — runner route tree. Each handler:
+  - Sets `export const runtime = 'nodejs'` (the route uses `child_process`, `fs/promises`, and ES256 verification — Edge runtime won't work).
+  - Wraps the handler in `withRunnerAuth` from `src/lib/runner-auth.ts`.
+  - Validates the body against the matching zod schema in `src/lib/runner-types.ts`; returns 400 on shape mismatch.
+  - Logs with bracket-prefix `[Runner:<endpointName>]` carrying `orgId` and `sandboxId` for cross-repo traceability.
+  These routes are called by the parent vibiz orchestrator. They are NOT for end-user use. Do not expose them publicly, do not add auth bypasses, do not add CORS for browser origins.
+- `dist-schema/` — auto-generated; do not hand-edit. Regenerate via `npm run schema:export` after every schema change. Contents are committed (not gitignored) so the vibiz parity check can diff against `main`.
+
+Workflow when changing a field: edit `template-config.schema.ts` → run `npm run schema:test` → run `npm run schema:export` → commit `src/lib/template-config.schema.ts` + `dist-schema/*` together. The vibiz PR that consumes the new shape comes second (it copies the regenerated artifacts in via `pnpm sandbox:sync-types`).
+
 ## Single source of truth: `template.config.ts`
 
 90% of edits go here, NOT into components. The landing page reads brand, copy, hero, features, testimonials, pricing, FAQ, and dashboard sidebar items from a single typed object. Change the object → site updates.
 
 Touch component files **only** when the user asks for new structure (new section, removed section, layout change). For copy/colors/fonts/features/items, edit `template.config.ts` and stop.
+
+> Sandbox v2 exception: `template.config.ts` is also edited programmatically by `src/lib/config-patch-executor.ts` (a ts-morph AST executor) via the `/api/_internal/runner/apply-config-patch` route. That is the platform's automated path for `set` / `append` / `remove` ops on this file. Do not edit `template.config.ts` by hand from agent runs that originate inside the runner — let the executor do it so the commit is consistent and the post-patch zod validation runs.
 
 ## File map (memorize this)
 
@@ -90,12 +116,16 @@ vibiz-saas/
 │   │   ├── api-guard.ts       ← API protection — DO NOT EDIT
 │   │   ├── sapiom.ts          ← AI provider integration — DO NOT EDIT
 │   │   ├── offers.ts          ← live pricing loader from data/offers.json
-│   │   └── app-url.ts         ← URL helpers
+│   │   ├── app-url.ts         ← URL helpers
+│   │   ├── template-config.schema.ts       ← Sandbox v2 zod contract (coordinate w/ vibiz)
+│   │   └── template-config.schema.test.ts  ← schema smoke test (npm run schema:test)
 │   └── middleware.ts          ← DO NOT EDIT — handles auth gating
 ├── data/
 │   └── offers.json            ← live pricing seeded by Vibiz at deploy
+├── dist-schema/                ← AUTO-GENERATED via `npm run schema:export`. Committed for vibiz CI parity check. Do not hand-edit.
 └── scripts/
-    └── migrate.mjs            ← DB migration runner — DO NOT EDIT
+    ├── migrate.mjs            ← DB migration runner — DO NOT EDIT
+    └── export-schema.ts       ← Sandbox v2 codegen — emits dist-schema/ artifacts
 ```
 
 ## AI capabilities (via Sapiom) — build, don't import third-party SDKs
