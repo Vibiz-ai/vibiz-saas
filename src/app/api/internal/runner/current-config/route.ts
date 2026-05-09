@@ -46,12 +46,23 @@ function jsonError(status: number, body: JsonError): Response {
   return Response.json(body, { status });
 }
 
+// `-c safe.directory=*` whitelists ownership mismatch — needed because
+// /home/user/app/.git is created by root (template build) but the route
+// handler may run as a different uid.
 async function git(cwd: string, args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync("git", args, {
-    cwd,
-    env: process.env,
-  });
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-c", "safe.directory=*", ...args],
+    { cwd, env: process.env },
+  );
   return stdout.trim();
+}
+
+// tsx is in the chassis devDependencies (and lands in node_modules at
+// template build). Path is stable for the runner — never invoke npx
+// (network) at runtime.
+function tsxBin(appDir: string): string {
+  return path.join(appDir, "node_modules", ".bin", "tsx");
 }
 
 /**
@@ -80,9 +91,15 @@ async function evalConfigSource(sourceText: string): Promise<
     await writeFile(filePath, sourceText, "utf8");
     let stdout: string;
     try {
+      // tsx executes a single .ts file with TS stripping — works on any
+      // Node version (sandbox runs Node 20 which lacks
+      // --experimental-strip-types). We write the eval script to a .ts
+      // file and run it.
+      const scriptPath = path.join(dir, `eval-${Date.now()}.mjs`);
+      await writeFile(scriptPath, evalScript, "utf8");
       const result = await execFileAsync(
-        process.execPath,
-        ["--experimental-strip-types", "--input-type=module", "-e", evalScript],
+        tsxBin(getAppDir()),
+        [scriptPath],
         { env: process.env, maxBuffer: 8 * 1024 * 1024 },
       );
       stdout = result.stdout;
