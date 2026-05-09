@@ -5,6 +5,9 @@ dist/
 .env
 .env.local
 .env.production.local
+# Local-only E2B template overrides (never commit; main is pinned to vibiz-saas-opencode-fab-test)
+e2b.local.toml
+e2b.*.local.toml
 *.db
 *.db-journal
 .turso/
