@@ -10,8 +10,15 @@
 // happens at call time per `.claude/rules/typescript-quality.md`.
 
 import { importSPKI, jwtVerify, type KeyObject, errors as joseErrors } from "jose";
+import { readFileSync, existsSync } from "node:fs";
 
 const ALG = "ES256";
+
+// File fallback for the public key. Used when E2B's `envs` injection
+// at Sandbox.create() doesn't propagate to the auto-started next-server
+// (start_cmd context). The orchestrator writes this file via
+// sandbox.files.write right after Sandbox.create.
+const PUBLIC_KEY_FILE = "/home/user/.runner-public-key.pem";
 const SCOPE: RunnerJwtScope = "runner";
 
 export type RunnerJwtScope = "runner";
@@ -43,22 +50,34 @@ export interface RunnerAuthContext {
 let cachedPublicKey: CryptoKey | KeyObject | null = null;
 let cachedPemFingerprint: string | null = null;
 
-async function getPublicKey(): Promise<CryptoKey | KeyObject> {
+function readPublicKeyPem(): string | null {
+  // Order: env var first (cheapest), then file fallback. The env may be
+  // base64-encoded (E2B envs single-line workaround) — detect & decode.
   const raw = process.env.VIBIZ_RUNNER_PUBLIC_KEY;
-  if (!raw) {
+  if (raw) {
+    return raw.includes("BEGIN PUBLIC KEY")
+      ? raw
+      : Buffer.from(raw, "base64").toString("utf-8");
+  }
+  if (existsSync(PUBLIC_KEY_FILE)) {
+    try {
+      const content = readFileSync(PUBLIC_KEY_FILE, "utf-8").trim();
+      if (content.includes("BEGIN PUBLIC KEY")) return content;
+    } catch {
+      // fallthrough to null
+    }
+  }
+  return null;
+}
+
+async function getPublicKey(): Promise<CryptoKey | KeyObject> {
+  const pem = readPublicKeyPem();
+  if (!pem) {
     throw new RunnerAuthError(
       "config_missing",
-      "VIBIZ_RUNNER_PUBLIC_KEY is required",
+      "VIBIZ_RUNNER_PUBLIC_KEY env or file fallback is required",
     );
   }
-  // E2B's `envs` injection at Sandbox.create() truncates multiline values
-  // at the first newline — so the orchestrator base64-encodes the PEM
-  // before passing it. Detect both forms here:
-  //   - starts with "-----BEGIN" → already PEM (local dev / direct env)
-  //   - otherwise → assumed base64-encoded PEM, decode to PEM first
-  const pem = raw.includes("BEGIN PUBLIC KEY")
-    ? raw
-    : Buffer.from(raw, "base64").toString("utf-8");
   if (cachedPublicKey && cachedPemFingerprint === pem) {
     return cachedPublicKey;
   }
