@@ -1,4 +1,4 @@
-// Sandbox v2 runner — POST /api/_internal/runner/git-revert
+// Sandbox v2 runner — POST /api/internal/runner/git-revert
 //
 // STUB. The real implementation (`git revert <sha> --no-edit` inside
 // `/home/user/app`) lands in a later step. We validate the body shape

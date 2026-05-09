@@ -174,10 +174,10 @@ const dashboardSchema = z
 
 export const TemplateConfigSchema = z
   .object({
-    // Contract version. Required by the schema even though
-    // template.config.ts does NOT carry it yet (the chassis ships without
-    // it; the runner injects/strips it at the boundary). Bump this when a
-    // breaking field shape change lands.
+    // Contract version. The chassis `template.config.ts` ships
+    // `schemaVersion: 1 as const` natively, so this field is required and
+    // does not need to be injected at the runner boundary. Bump this when
+    // a breaking field shape change lands.
     schemaVersion: z.literal(1),
     product: productSchema,
     brand: brandSchema,

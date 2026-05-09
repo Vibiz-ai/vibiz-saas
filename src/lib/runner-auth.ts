@@ -2,7 +2,7 @@
 //
 // Mirrors the signer in `vibiz/lib/services/sandbox/runner-jwt.ts`.
 // The vibiz orchestrator mints short-lived ES256 tokens; every call to
-// `/api/_internal/runner/*` in this chassis MUST verify them via this module.
+// `/api/internal/runner/*` in this chassis MUST verify them via this module.
 //
 // Algorithm is whitelisted to ['ES256'] to defeat algorithm-confusion
 // attacks. The public key (PEM SPKI) is read from VIBIZ_RUNNER_PUBLIC_KEY

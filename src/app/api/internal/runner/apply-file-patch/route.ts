@@ -1,4 +1,4 @@
-// Sandbox v2 runner — POST /api/_internal/runner/apply-file-patch
+// Sandbox v2 runner — POST /api/internal/runner/apply-file-patch
 //
 // STUB. The real implementation (apply a unified diff to a single file
 // within `/home/user/app`, then commit) lands in a later step. We validate

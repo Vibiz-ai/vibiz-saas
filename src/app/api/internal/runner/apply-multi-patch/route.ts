@@ -1,4 +1,4 @@
-// Sandbox v2 runner — POST /api/_internal/runner/apply-multi-patch
+// Sandbox v2 runner — POST /api/internal/runner/apply-multi-patch
 //
 // STUB. The real implementation (apply unified diffs to multiple files
 // atomically, then commit) lands in a later step. We validate the body

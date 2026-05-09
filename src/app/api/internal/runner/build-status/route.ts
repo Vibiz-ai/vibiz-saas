@@ -1,4 +1,4 @@
-// Sandbox v2 runner — GET /api/_internal/runner/build-status
+// Sandbox v2 runner — GET /api/internal/runner/build-status
 //
 // STUB. Emits a single SSE event `{ "status": "not-implemented" }` and
 // closes the stream. The real implementation (live next-dev /

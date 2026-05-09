@@ -6,7 +6,7 @@
 // runner uses to mutate the chassis config without ever doing string
 // replacement on user-edited code.
 //
-// The runner endpoint at `src/app/api/_internal/runner/apply-config-patch`
+// The runner endpoint at `src/app/api/internal/runner/apply-config-patch`
 // is the only caller; expressing the engine as a pure(ish) library — input
 // is a source string + ops, output is the modified source — keeps it unit
 // testable without spinning up Next.js.

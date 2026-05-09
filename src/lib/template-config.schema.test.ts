@@ -8,9 +8,9 @@
 // vitest lands.
 //
 // What we assert (3 cases):
-//   1. The runtime `template.config.ts` object — once `schemaVersion: 1`
-//      is injected — parses cleanly. This is the chassis-runner contract:
-//      the in-sandbox config must be schema-compliant.
+//   1. The runtime `template.config.ts` object parses cleanly as-is. The
+//      chassis now ships `schemaVersion: 1` natively, so no injection is
+//      needed; this is the chassis-runner contract.
 //   2. Removing a required field (`hero.headline`) throws. Guards against
 //      accidental loosening to `.optional()` during refactors.
 //   3. An unknown root key is rejected. Guards against `.strict()` being
@@ -29,15 +29,14 @@ function assert(cond: boolean, msg: string): void {
   if (!cond) throw new Error(`assertion failed: ${msg}`);
 }
 
-// --- 1. Existing chassis config + injected schemaVersion parses ---------
-check("existing template.config.ts parses with schemaVersion=1", () => {
+// --- 1. Existing chassis config parses as-is (no injection) -------------
+check("existing template.config.ts parses cleanly", () => {
   // The runtime config is `as const` so the auth.providers field comes back
   // as `readonly ["email-password"]`. We deep-clone via JSON to drop the
   // readonly markers for the parser — equivalent to what the runner does
   // when it serializes the patch payload over JSON.
   const cloned = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
-  const withVersion = { schemaVersion: 1, ...cloned };
-  const result = TemplateConfigSchema.safeParse(withVersion);
+  const result = TemplateConfigSchema.safeParse(cloned);
   if (!result.success) {
     console.error(
       "[schema-test] parse error:",
@@ -54,8 +53,7 @@ check("removing hero.headline causes parse to throw", () => {
     [k: string]: unknown;
   };
   delete cloned.hero.headline;
-  const withVersion = { schemaVersion: 1, ...cloned };
-  const result = TemplateConfigSchema.safeParse(withVersion);
+  const result = TemplateConfigSchema.safeParse(cloned);
   assert(
     !result.success,
     "expected parse to fail when hero.headline is missing",
@@ -65,7 +63,7 @@ check("removing hero.headline causes parse to throw", () => {
 // --- 3. Unknown root key fails (.strict() guard) ------------------------
 check("unknown root key is rejected by .strict()", () => {
   const cloned = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
-  const withGarbage = { schemaVersion: 1, ...cloned, wat: "huh" };
+  const withGarbage = { ...cloned, wat: "huh" };
   const result = TemplateConfigSchema.safeParse(withGarbage);
   assert(
     !result.success,

@@ -1,4 +1,4 @@
-// Sandbox v2 runner — POST /api/_internal/runner/claim
+// Sandbox v2 runner — POST /api/internal/runner/claim
 //
 // Self-bootstrapping endpoint the parent vibiz orchestrator calls once at
 // the start of every sandbox session. If `/home/user/app/.git` is missing

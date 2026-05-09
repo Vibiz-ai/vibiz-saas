@@ -37,7 +37,7 @@ function assert(cond: boolean, msg: string): void {
 }
 
 function makeRequest(headers: Record<string, string> = {}): Request {
-  return new Request("https://chassis.local/api/_internal/runner/test", {
+  return new Request("https://chassis.local/api/internal/runner/test", {
     method: "POST",
     headers,
   });

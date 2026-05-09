@@ -12,7 +12,8 @@
     "runner-auth:test": "node --experimental-strip-types src/lib/runner-auth.test.ts",
     "runner-types:test": "node --experimental-strip-types src/lib/runner-types.test.ts",
     "git-runner:test": "node --experimental-strip-types src/lib/git-runner.test.ts",
-    "config-patch:test": "node --experimental-strip-types src/lib/config-patch-executor.test.ts"
+    "config-patch:test": "node --experimental-strip-types src/lib/config-patch-executor.test.ts",
+    "runner:smoke": "node scripts/smoke-runner-config-patch.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

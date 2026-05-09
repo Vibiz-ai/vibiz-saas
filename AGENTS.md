@@ -28,8 +28,8 @@ Use the project-local OpenCode skills when the task touches their area:
 - `src/lib/auth.ts`, `src/lib/auth-client.ts` — better-auth wiring (unless explicitly asked to change auth)
 - `src/lib/api-guard.ts` — API protection
 - `src/lib/runner-auth.ts` — Sandbox v2 runner JWT verifier; wire contract with the vibiz orchestrator (coordinate any change with vibiz)
-- `src/lib/runner-types.ts` — Sandbox v2 zod request/response schemas for `/api/_internal/runner/*`; shared wire contract with the vibiz runner client
-- `src/app/api/_internal/runner/**` — Sandbox v2 runner route tree; called by the parent vibiz orchestrator over JWT-authed HTTPS. NOT for end-user use. Do not expose them publicly, do not add auth bypasses, do not add CORS for browser origins.
+- `src/lib/runner-types.ts` — Sandbox v2 zod request/response schemas for `/api/internal/runner/*`; shared wire contract with the vibiz runner client
+- `src/app/api/internal/runner/**` — Sandbox v2 runner route tree; called by the parent vibiz orchestrator over JWT-authed HTTPS. NOT for end-user use. Do not expose them publicly, do not add auth bypasses, do not add CORS for browser origins.
 - `src/lib/sapiom.ts` — AI provider gateway helper (extend by adding new routes that USE it; never modify it)
 - `src/components/VibizSelectBridge.tsx` — Vibiz dashboard select-element bridge
 - `src/app/api/auth/[...all]/route.ts` — better-auth route handler
@@ -45,11 +45,11 @@ These files are the wire contract between the vibiz platform and the in-sandbox 
 - `src/lib/template-config.schema.ts` — zod schema for the `TemplateConfig` payload accepted by the runner. Source of truth. Mirror of the runtime shape in `template.config.ts`. Adding/renaming fields is a breaking change; bump `schemaVersion` and ping the vibiz side.
 - `scripts/export-schema.ts` — codegen entry point. Run via `npm run schema:export`. Emits `dist-schema/template-config.schema.json` (JSON Schema 7) and `dist-schema/template-config.types.d.ts`.
 - `src/lib/template-config.schema.test.ts` — smoke test (run via `npm run schema:test`): asserts the runtime config parses, that required fields are required, and that `.strict()` rejects unknown root keys.
-- `src/lib/runner-auth.ts` — ES256 JWT verifier for `/api/_internal/runner/*`. Signer is `vibiz/lib/services/sandbox/runner-jwt.ts`; payload shape (`sub`, `sandboxId`, `scope: 'runner'`, `iat`, `exp`) is the wire contract. Public key read lazily from `VIBIZ_RUNNER_PUBLIC_KEY` (PEM SPKI). Algorithm is whitelisted to `['ES256']` — do not loosen.
+- `src/lib/runner-auth.ts` — ES256 JWT verifier for `/api/internal/runner/*`. Signer is `vibiz/lib/services/sandbox/runner-jwt.ts`; payload shape (`sub`, `sandboxId`, `scope: 'runner'`, `iat`, `exp`) is the wire contract. Public key read lazily from `VIBIZ_RUNNER_PUBLIC_KEY` (PEM SPKI). Algorithm is whitelisted to `['ES256']` — do not loosen.
 - `src/lib/runner-auth.test.ts` — smoke test (run via `npm run runner-auth:test`): generates a fresh ES256 keypair per run and mints tokens inline mirroring the upstream signer, then exercises the verifier across happy + 5 failure paths.
-- `src/lib/runner-types.ts` — zod request/response schemas for every `/api/_internal/runner/*` endpoint (claim, apply-config-patch, apply-file-patch, apply-multi-patch, git-revert, build-status). Shared with the vibiz-side runner client SDK; both sides parse against these so the contract is enforced symmetrically. Add new endpoints by appending request/response schemas here (with `.strict()`) before wiring the route handler.
+- `src/lib/runner-types.ts` — zod request/response schemas for every `/api/internal/runner/*` endpoint (claim, apply-config-patch, apply-file-patch, apply-multi-patch, git-revert, build-status). Shared with the vibiz-side runner client SDK; both sides parse against these so the contract is enforced symmetrically. Add new endpoints by appending request/response schemas here (with `.strict()`) before wiring the route handler.
 - `src/lib/runner-types.test.ts` — smoke test (run via `npm run runner-types:test`): exercises every request schema with a happy + invalid payload to fail loud if a schema is loosened or a discriminator drops.
-- `src/app/api/_internal/runner/**` — runner route tree. Each handler:
+- `src/app/api/internal/runner/**` — runner route tree. Each handler:
   - Sets `export const runtime = 'nodejs'` (the route uses `child_process`, `fs/promises`, and ES256 verification — Edge runtime won't work).
   - Wraps the handler in `withRunnerAuth` from `src/lib/runner-auth.ts`.
   - Validates the body against the matching zod schema in `src/lib/runner-types.ts`; returns 400 on shape mismatch.
@@ -65,7 +65,7 @@ Workflow when changing a field: edit `template-config.schema.ts` → run `npm ru
 
 Touch component files **only** when the user asks for new structure (new section, removed section, layout change). For copy/colors/fonts/features/items, edit `template.config.ts` and stop.
 
-> Sandbox v2 exception: `template.config.ts` is also edited programmatically by `src/lib/config-patch-executor.ts` (a ts-morph AST executor) via the `/api/_internal/runner/apply-config-patch` route. That is the platform's automated path for `set` / `append` / `remove` ops on this file. Do not edit `template.config.ts` by hand from agent runs that originate inside the runner — let the executor do it so the commit is consistent and the post-patch zod validation runs.
+> Sandbox v2 exception: `template.config.ts` is also edited programmatically by `src/lib/config-patch-executor.ts` (a ts-morph AST executor) via the `/api/internal/runner/apply-config-patch` route. That is the platform's automated path for `set` / `append` / `remove` ops on this file. Do not edit `template.config.ts` by hand from agent runs that originate inside the runner — let the executor do it so the commit is consistent and the post-patch zod validation runs.
 
 ## File map (memorize this)
 
@@ -348,3 +348,21 @@ Do all of that in `template.config.ts` first, then check if any component-level 
 ## E2B context
 
 The template image copies this repo to `/home/user/app`, installs dependencies, and starts `npm run dev -- -p 3000` from `e2b.toml`. New sandboxes receive the latest image after the E2B template rebuild workflow runs on `main`; already-running sandboxes keep the old image until they restart.
+
+## Sandbox v2 runtime env vars (set by parent vibiz when creating the sandbox)
+
+The chassis itself does NOT read these from a `.env.example`; they are injected by the parent vibiz orchestrator at sandbox-create time and surfaced as process env to the dev server. If you are running the chassis standalone (no parent vibiz), only the auth + Sapiom vars below matter; the runner-specific vars are unused.
+
+Runner-specific (required for `/api/internal/runner/*` to work):
+
+- `VIBIZ_RUNNER_PUBLIC_KEY` — ES256 PEM SPKI of the orchestrator's signing key. Required by `src/lib/runner-auth.ts`; without it every runner request fails 500 `config_missing`. Format must be a full PEM block (`-----BEGIN PUBLIC KEY-----` … `-----END PUBLIC KEY-----`).
+- `RUNNER_APP_DIR` — absolute path on disk where the chassis source lives inside the sandbox. Defaults to `/home/user/app` (matching the Dockerfile's `COPY . /home/user/app`). Override only for local smoke tests (`scripts/smoke-runner-config-patch.mjs` does this with a temp dir).
+- `ORG_ID` — workspace identifier passed by the orchestrator for telemetry / log correlation. Not enforced by the chassis today (the JWT's `sub` claim is the source of truth) but reserved for future structured logging.
+
+Existing chassis vars (already documented elsewhere; included here for the full sandbox env contract):
+
+- `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` — Turso connection for better-auth. Provisioned by Vibiz at deploy. Without them, `src/middleware.ts` short-circuits dashboard/login/signup routes to `/`.
+- `BETTER_AUTH_SECRET` — better-auth session signing key. Required when auth is enabled.
+- `SAPIOM_API_KEY` — gateway key for the AI provider. Required by `src/lib/sapiom.ts` (and any route gated by `guardAiRequest`).
+- `VIBIZ_RUNTIME_BASE_URL` — chassis-side public URL for outbound callbacks (used by `src/lib/vibiz-runtime.ts`). Set by Vibiz at sandbox boot.
+- `STRIPE_*` — only set when the parent vibiz wires Stripe; never check these in.

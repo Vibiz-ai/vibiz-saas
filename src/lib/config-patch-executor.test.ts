@@ -293,8 +293,7 @@ check("output round-trips through TemplateConfigSchema after dynamic import", as
   ]);
   const cfg = await importConfig(result.newSourceText);
   const cloned = JSON.parse(JSON.stringify(cfg)) as Record<string, unknown>;
-  const withVersion = { schemaVersion: 1, ...cloned };
-  const parsed = TemplateConfigSchema.safeParse(withVersion);
+  const parsed = TemplateConfigSchema.safeParse(cloned);
   if (!parsed.success) {
     console.error(
       "[config-patch-executor.test] schema parse failed:",

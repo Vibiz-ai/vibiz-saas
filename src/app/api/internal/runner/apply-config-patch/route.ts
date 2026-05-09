@@ -1,4 +1,4 @@
-// Sandbox v2 runner — POST /api/_internal/runner/apply-config-patch
+// Sandbox v2 runner — POST /api/internal/runner/apply-config-patch
 //
 // AST-aware patch application for `template.config.ts`. The vibiz-side
 // EditRouter classifier (Step 8) emits ops shaped against
@@ -33,7 +33,6 @@ import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { applyConfigOps, ConfigPatchError } from "@/lib/config-patch-executor";
@@ -51,11 +50,6 @@ function getAppDir(): string {
 }
 
 const execFileAsync = promisify(execFile);
-
-// Schema version that the chassis runtime config implicitly carries. The
-// runner injects this at validate-time so `TemplateConfigSchema` (which
-// requires `schemaVersion: 1`) accepts the imported module.
-const RUNNER_SCHEMA_VERSION = 1 as const;
 
 interface JsonError {
   error: string;
@@ -93,18 +87,24 @@ async function isWorkingTreeDirty(cwd: string): Promise<boolean> {
 }
 
 /**
- * Validate a TypeScript source by writing it to a temp file, dynamic-
- * importing it, and running the imported `config` through
- * `TemplateConfigSchema`. The temp file is cleaned up on every code path.
+ * Validate a TypeScript source by spawning a child Node process with
+ * `--experimental-strip-types`, dynamically importing the file, and
+ * printing `JSON.stringify(config)` to stdout. Parent then runs that
+ * JSON through `TemplateConfigSchema`.
  *
- * This is slow (~100-300ms in practice) but it's the simplest way to be
- * sure the runtime evaluates correctly AND the resulting object matches
- * the schema. The runner only handles a handful of patches per minute so
- * the cost is acceptable.
+ * Why a subprocess instead of an inline `await import(url)`:
+ *   - This route handler is bundled by Next.js (Webpack / Turbopack).
+ *     A bare `await import(url)` becomes a critical-dependency expression
+ *     in the bundle and the resulting bundled handler cannot resolve
+ *     arbitrary file:// URLs at runtime.
+ *   - Spawning a fresh `node` process side-steps the bundler entirely
+ *     and lets node's strip-types loader handle the .ts file directly.
  *
- * The dynamic import goes through node's experimental TS strip-types
- * loader. The chassis already requires Node 22+ (see scripts in
- * package.json), so this is supported.
+ * Trade-off: ~80-200ms overhead per call (spawn + boot). Acceptable for
+ * the runner — apply-config-patch happens on the order of 1/minute.
+ *
+ * The chassis already requires Node 22+ (see `node --experimental-strip-types`
+ * usage in `package.json` scripts), so the loader is available.
  */
 async function validateConfigSource(sourceText: string): Promise<
   | { ok: true }
@@ -112,26 +112,48 @@ async function validateConfigSource(sourceText: string): Promise<
 > {
   const dir = await mkdtemp(path.join(tmpdir(), "vibiz-config-"));
   const filePath = path.join(dir, `config-${Date.now()}.ts`);
+  const evalScript = `
+    import('${filePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')
+      .then((m) => {
+        process.stdout.write(JSON.stringify(m.config ?? null));
+      })
+      .catch((e) => {
+        process.stderr.write(e && e.stack ? e.stack : String(e));
+        process.exit(2);
+      });
+  `;
   try {
     await writeFile(filePath, sourceText, "utf8");
-    // Bust the import cache by appending a query-string-like hash; node
-    // dynamic import keys by the resolved URL, and a fresh path per call
-    // already guarantees a fresh module record.
-    const url = pathToFileURL(filePath).href;
 
-    let mod: unknown;
+    let stdout: string;
     try {
-      mod = await import(url);
+      const result = await execFileAsync(
+        process.execPath,
+        ["--experimental-strip-types", "--input-type=module", "-e", evalScript],
+        { env: process.env, maxBuffer: 8 * 1024 * 1024 },
+      );
+      stdout = result.stdout;
+    } catch (error) {
+      const err = error as { stderr?: string; message?: string };
+      return {
+        ok: false,
+        error: "module_import_failed",
+        details: err.stderr ?? err.message ?? String(error),
+      };
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(stdout);
     } catch (error) {
       return {
         ok: false,
         error: "module_import_failed",
-        details: error instanceof Error ? error.message : String(error),
+        details: `subprocess stdout was not JSON: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
 
-    const m = mod as { config?: unknown };
-    if (!m.config || typeof m.config !== "object") {
+    if (!parsedJson || typeof parsedJson !== "object") {
       return {
         ok: false,
         error: "config_export_missing",
@@ -139,11 +161,7 @@ async function validateConfigSource(sourceText: string): Promise<
       };
     }
 
-    // The runtime config does NOT carry `schemaVersion`; inject it at the
-    // validation boundary. Mirrors the schema test pattern.
-    const cloned = JSON.parse(JSON.stringify(m.config)) as Record<string, unknown>;
-    const withVersion = { schemaVersion: RUNNER_SCHEMA_VERSION, ...cloned };
-    const result = TemplateConfigSchema.safeParse(withVersion);
+    const result = TemplateConfigSchema.safeParse(parsedJson);
     if (!result.success) {
       return {
         ok: false,

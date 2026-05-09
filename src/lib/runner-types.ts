@@ -1,7 +1,7 @@
 // Sandbox v2 — runner wire-contract schemas.
 //
 // These zod schemas are the SHARED source of truth for the request/response
-// shapes accepted by `/api/_internal/runner/*`. Both this chassis (the
+// shapes accepted by `/api/internal/runner/*`. Both this chassis (the
 // sandbox-side route handlers) and the vibiz-side runner client (Step 5)
 // must reference these — keep this file dependency-light (zod only) so it
 // can be copied/imported across the boundary without dragging Next.js
