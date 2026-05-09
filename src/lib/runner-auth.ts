@@ -44,14 +44,21 @@ let cachedPublicKey: CryptoKey | KeyObject | null = null;
 let cachedPemFingerprint: string | null = null;
 
 async function getPublicKey(): Promise<CryptoKey | KeyObject> {
-  const pem = process.env.VIBIZ_RUNNER_PUBLIC_KEY;
-  if (!pem) {
+  const raw = process.env.VIBIZ_RUNNER_PUBLIC_KEY;
+  if (!raw) {
     throw new RunnerAuthError(
       "config_missing",
       "VIBIZ_RUNNER_PUBLIC_KEY is required",
     );
   }
-  // Refresh if the env value changed (e.g. test injection between calls).
+  // E2B's `envs` injection at Sandbox.create() truncates multiline values
+  // at the first newline — so the orchestrator base64-encodes the PEM
+  // before passing it. Detect both forms here:
+  //   - starts with "-----BEGIN" → already PEM (local dev / direct env)
+  //   - otherwise → assumed base64-encoded PEM, decode to PEM first
+  const pem = raw.includes("BEGIN PUBLIC KEY")
+    ? raw
+    : Buffer.from(raw, "base64").toString("utf-8");
   if (cachedPublicKey && cachedPemFingerprint === pem) {
     return cachedPublicKey;
   }
