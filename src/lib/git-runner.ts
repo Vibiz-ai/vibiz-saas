@@ -71,7 +71,7 @@ const GIT_SAFE_DIRECTORY_FLAGS: ReadonlyArray<string> = [
  * Promise wrapper around `execFile('git', args, { cwd })`.
  * Throws `GitCommandError` with stdout+stderr captured on non-zero exit.
  */
-function runGit(
+export function runGit(
   cwd: string,
   args: ReadonlyArray<string>,
 ): Promise<{ stdout: string; stderr: string }> {
