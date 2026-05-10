@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "node scripts/migrate.mjs && next build",
     "start": "next start",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "schema:export": "node --experimental-strip-types scripts/export-schema.ts",
+    "schema:test": "node --experimental-strip-types src/lib/template-config.schema.test.ts",
+    "runner-auth:test": "node --experimental-strip-types src/lib/runner-auth.test.ts",
+    "runner-types:test": "node --experimental-strip-types src/lib/runner-types.test.ts",
+    "git-runner:test": "node --experimental-strip-types src/lib/git-runner.test.ts",
+    "config-patch:test": "node --experimental-strip-types src/lib/config-patch-executor.test.ts",
+    "runner:smoke": "node scripts/smoke-runner-config-patch.mjs",
+    "runner:smoke-file": "node scripts/smoke-runner-file-patch.mjs",
+    "runner:smoke-multi": "node scripts/smoke-runner-multi-patch.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
@@ -14,12 +23,15 @@
     "@sapiom/fetch": "^0.5.0",
     "better-auth": "^1.2.0",
     "clsx": "^2.1.0",
+    "jose": "^6.1.0",
     "kysely": "^0.28.17",
     "lucide-react": "^0.475.0",
     "next": "^15.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "ts-morph": "^24.0.0",
+    "zod": "^4.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
@@ -27,6 +39,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   }
 }

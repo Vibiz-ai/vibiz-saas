@@ -1,4 +1,5 @@
 export const config = {
+  schemaVersion: 1 as const,
   product: {
     name: "MyProduct",
     tagline: "The simplest way to achieve your goals",
