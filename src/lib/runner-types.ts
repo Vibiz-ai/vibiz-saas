@@ -161,6 +161,17 @@ export const GitRevertRequestSchema = z
   .strict();
 export type GitRevertRequest = z.infer<typeof GitRevertRequestSchema>;
 
+// Success response for `git-revert`. Mirrors the success shape of
+// apply-config-patch in spirit: ok flag + the new HEAD sha so the
+// orchestrator can confirm the reset landed where it expected.
+export const GitRevertResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    headSha: z.string().min(1),
+  })
+  .strict();
+export type GitRevertResponse = z.infer<typeof GitRevertResponseSchema>;
+
 // --- /snapshot -----------------------------------------------------------
 
 // Tarball snapshot upload. The orchestrator pre-signs a Supabase Storage
@@ -224,6 +235,34 @@ export const BuildStatusEventSchema = z.discriminatedUnion("status", [
     .strict(),
 ]);
 export type BuildStatusEvent = z.infer<typeof BuildStatusEventSchema>;
+
+// Poll-style snapshot returned by `GET /build-status` when the client
+// sends `Accept: application/json` (the orchestrator's verify-or-revert
+// loop uses this — SSE is unsuitable for short bounded polls because it
+// streams an unknown number of events and never closes until the build
+// resolves).
+//
+// Shape MUST stay in sync with `BuildStatusPollResponseSchema` in
+// `vibiz/lib/services/sandbox/runner-client.ts` — that schema is
+// `.strict()` so we cannot add extra fields without breaking the
+// orchestrator's parse. `not-implemented` is the wire signal the
+// orchestrator's verify treats as a soft-pass (no real build state
+// available); we emit it whenever the chassis can't determine actual
+// build state.
+export const BuildStatusJsonResponseSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("compiling") }).strict(),
+  z.object({ status: z.literal("ok") }).strict(),
+  z
+    .object({
+      status: z.literal("failed"),
+      error: z.string().min(1),
+    })
+    .strict(),
+  z.object({ status: z.literal("not-implemented") }).strict(),
+]);
+export type BuildStatusJsonResponse = z.infer<
+  typeof BuildStatusJsonResponseSchema
+>;
 
 // --- shared error envelope -----------------------------------------------
 
