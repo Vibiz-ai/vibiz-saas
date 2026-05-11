@@ -53,19 +53,26 @@ interface EntitlementCheckResponse {
 /**
  * Discriminated outcome of a claim exchange. Render branded UX per `kind`.
  *
- *  - `success`, claim exchanged, entitlement is active. Unlock features.
- *  - `already_redeemed`, second exchange of the same session (e.g. the
- *    buyer refreshed `/payment-success`). The entitlement returned came
- *    from `/check`, treat as success.
- *  - `pending`, `/claim` kept returning `payment_not_recorded` after the
+ *  - `success`: claim exchanged, entitlement is active. Unlock features.
+ *  - `already_redeemed`: second exchange of the same session (e.g. the
+ *    buyer refreshed `/payment-success`). Entitlement payload was recovered
+ *    via a follow-up lookup. Treat as success.
+ *  - `already_redeemed_opaque`: as above, but the entitlement payload
+ *    cannot be recovered from the claim alone (the platform's one-shot
+ *    claim intentionally loses the link after first redemption, and no
+ *    lookup-by-claim endpoint exists yet). Render a soft success shell.
+ *    The first successful redemption already wrote the local entitlement
+ *    row, so subsequent gated routes still resolve via `hasLocalEntitlement`.
+ *  - `pending`: `/claim` kept returning `payment_not_recorded` after the
  *    full retry budget. The Stripe webhook has likely not landed yet. Show
  *    "we're confirming your payment" copy and invite the buyer to refresh.
- *  - `error`, terminal failure (invalid claim, expired, payment not paid,
+ *  - `error`: terminal failure (invalid claim, expired, payment not paid,
  *    buyer-email mismatch). Show support copy.
  */
 export type ClaimOutcome =
   | { kind: "success"; entitlement: VibizEntitlementData }
   | { kind: "already_redeemed"; entitlement: VibizEntitlementData }
+  | { kind: "already_redeemed_opaque" }
   | { kind: "pending" }
   | { kind: "error"; error: string };
 
@@ -76,7 +83,9 @@ function runtimeBaseUrl(): string {
   );
 }
 
-const RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
+// Webhook lands in <2s in the common case. Total budget = 3.5s + ~4 fetch
+// round-trips, comfortably under Vercel's 10s Hobby function timeout.
+const RETRY_DELAYS_MS = [500, 1_000, 2_000] as const;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,8 +96,9 @@ function sleep(ms: number): Promise<void> {
  *
  * Idempotent on the platform side (atomic UPDATE on
  * `funnel_payment.metadata.entitlement_claimed_at`). Safe to call on a
- * full page refresh; will return `already_redeemed` with the existing
- * entitlement fetched via `/check`.
+ * full page refresh; the second call returns `already_redeemed` if we
+ * can recover the entitlement payload, otherwise `already_redeemed_opaque`.
+ * Either kind should render a success-shaped UI.
  *
  * Server-only. Throwing has been replaced with a `ClaimOutcome` union so
  * the caller can render brand-specific copy per failure mode.
@@ -115,15 +125,16 @@ export async function claimVibizEntitlement(
     }
 
     // Refresh / second-exchange path: the row is already claimed on the
-    // platform. Fall back to /check so we can still hand the caller a
-    // populated entitlement (best-effort, if /check fails we surface
-    // the original error).
+    // platform. Recovery best-effort: if a future lookup endpoint exists
+    // we surface the entitlement; otherwise we still treat this as a
+    // soft success because the original `/claim` already wrote the local
+    // entitlement row on this user's first visit.
     if (response.status === 409 && data.error === "claim_already_redeemed") {
       const recovered = await recoverAlreadyRedeemed(claim, localBuyerEmail);
       if (recovered) {
         return { kind: "already_redeemed", entitlement: recovered };
       }
-      return { kind: "error", error: "claim_already_redeemed" };
+      return { kind: "already_redeemed_opaque" };
     }
 
     // Webhook-vs-redirect race: retry with backoff, then surface as pending.
@@ -184,8 +195,8 @@ export async function checkVibizEntitlement(
     },
   );
   const data = (await response.json().catch(() => ({}))) as EntitlementCheckResponse;
-  if (!response.ok && !data.error && !data.reason) {
-    throw new Error("check_failed");
+  if (!response.ok) {
+    throw new Error(data.reason ?? data.error ?? "check_failed");
   }
   return data;
 }

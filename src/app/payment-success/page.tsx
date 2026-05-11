@@ -86,8 +86,20 @@ async function renderAuthenticatedOutcome({
   if (outcome.kind === "error") {
     return <ErrorShell error={outcome.error} />;
   }
+  if (outcome.kind === "already_redeemed_opaque") {
+    // Refresh of a previously-successful exchange. The local entitlement
+    // row was written on the FIRST exchange so gated routes still resolve;
+    // we just can't re-show the offer-specific details here.
+    return (
+      <PaymentShell
+        title="Payment already confirmed"
+        message="This purchase has already been processed. Your access is still active."
+        actions={<Button href="/dashboard">Continue</Button>}
+      />
+    );
+  }
 
-  // success or already_redeemed
+  // success or already_redeemed (with recovered entitlement)
   const entitlement = outcome.entitlement;
   const buyerEmail = entitlement.buyerEmail?.toLowerCase();
   if (buyerEmail && sessionEmail && buyerEmail !== sessionEmail) {
@@ -100,13 +112,34 @@ async function renderAuthenticatedOutcome({
     );
   }
 
-  // Best-effort local mirror. If the local DB write fails (transient Turso
-  // issue) we still surface success, the platform is the source of truth
-  // and the next `hasLocalEntitlement` call will re-resolve via /check.
+  // Best-effort local mirror with one retry on transient errors. The
+  // platform is the source of truth, but `hasLocalEntitlement` reads the
+  // local table and returns false when no row exists (it does NOT consult
+  // /check as a fallback). If both writes fail, surface a soft error so
+  // the buyer can refresh, rather than rendering "Access unlocked" while
+  // gated routes remain locked.
+  let stored = false;
   try {
     await storeLocalEntitlement(sessionUserId, entitlement);
+    stored = true;
   } catch {
-    // swallow; success rendering is still correct
+    try {
+      await new Promise((r) => setTimeout(r, 500));
+      await storeLocalEntitlement(sessionUserId, entitlement);
+      stored = true;
+    } catch {
+      stored = false;
+    }
+  }
+
+  if (!stored) {
+    return (
+      <PaymentShell
+        title="Payment confirmed"
+        message="Your payment went through. We had trouble linking it to your account on this device, refresh in a moment to try again. Contact support if this persists."
+        detail={entitlement.buyerEmail ? `Paid as ${entitlement.buyerEmail}` : undefined}
+      />
+    );
   }
 
   return (
@@ -128,6 +161,14 @@ async function AnonymousAck({ claim }: { claim: string }) {
   const outcome = await claimVibizEntitlement(claim);
   if (outcome.kind === "pending") return <PendingShell />;
   if (outcome.kind === "error") return <ErrorShell error={outcome.error} />;
+  if (outcome.kind === "already_redeemed_opaque") {
+    return (
+      <PaymentShell
+        title="Payment already confirmed"
+        message="This purchase has already been processed. Check your inbox for the delivery."
+      />
+    );
+  }
   return <AnonymousSuccessShell entitlement={outcome.entitlement} />;
 }
 
