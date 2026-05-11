@@ -1,10 +1,11 @@
-import { config } from "@/lib/config";
+import { getConfig } from "@/lib/config-server";
 import * as Icons from "lucide-react";
 
 type IconMap = Record<string, React.ComponentType<{ className?: string }>>;
 const IconRegistry = Icons as unknown as IconMap;
 
 export function Features() {
+  const config = getConfig();
   return (
     <section id="features" className="py-24">
       <div className="max-w-6xl mx-auto px-6">

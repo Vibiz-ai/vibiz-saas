@@ -1,10 +1,10 @@
-"use client";
-import { config } from "@/lib/config";
-import { authEnabled } from "@/lib/auth-client";
+import { getConfig } from "@/lib/config-server";
 
+const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
 const authPaths = ["/login", "/signup", "/dashboard"];
 
 export function Footer() {
+  const config = getConfig();
   const filtered = authEnabled
     ? config.footer.links
     : config.footer.links.filter((l) => !authPaths.includes(l.href));

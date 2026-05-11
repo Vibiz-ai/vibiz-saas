@@ -1,8 +1,9 @@
-import { config } from "@/lib/config";
+import { getConfig } from "@/lib/config-server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function Hero() {
+  const config = getConfig();
   return (
     <section className="min-h-[85vh] flex items-center relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-primary)] via-[var(--brand-secondary)] to-[var(--brand-primary)] opacity-5" />

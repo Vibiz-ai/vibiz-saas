@@ -1,6 +1,7 @@
-import { config } from "@/lib/config";
+import { getConfig } from "@/lib/config-server";
 
 export function Testimonials() {
+  const config = getConfig();
   return (
     <section className="py-24 bg-gray-50/50">
       <div className="max-w-6xl mx-auto px-6">

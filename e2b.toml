@@ -33,11 +33,14 @@ team_id = ""
 dockerfile = "Dockerfile"
 
 # The startup command E2B runs when a fresh sandbox boots. Fires
-# `npm run dev` in the background so the iframe is live the moment
-# the bootstrap probe lands. nohup + redirected logs let our Trigger
-# task's curl probe find the server already up. The subshell + stdin
-# closure (`</dev/null`) prevents E2B's RPC from hanging on stdin.
-start_cmd = "(cd /home/user/app && nohup npm run dev -- -p 3000 </dev/null >/tmp/next-dev.log 2>&1 &)"
+# `npm run dev --turbo` in the background so the iframe is live the
+# moment the bootstrap probe lands. Turbopack cuts dev-server RAM by
+# ~30-40% vs webpack (a real win in the 4GB sandbox) and halves HMR
+# latency — same Next 15 codebase, opt-in via the flag. nohup +
+# redirected logs let our Trigger task's curl probe find the server
+# already up. The subshell + stdin closure (`</dev/null`) prevents
+# E2B's RPC from hanging on stdin.
+start_cmd = "(cd /home/user/app && nohup npm run dev -- -p 3000 --turbo </dev/null >/tmp/next-dev.log 2>&1 &)"
 
 # No extra context filtering needed beyond .dockerignore.
 ignore = []
