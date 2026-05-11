@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { storeLocalEntitlement } from "@/lib/entitlements";
-import { claimVibizEntitlement } from "@/lib/vibiz-runtime";
+import {
+  type ClaimOutcome,
+  claimVibizEntitlement,
+  type VibizEntitlementData,
+} from "@/lib/vibiz-runtime";
 
 interface PaymentSuccessPageProps {
   searchParams: Promise<{ claim?: string; payment?: string }>;
@@ -28,9 +32,15 @@ export default async function PaymentSuccessPage({
     );
   }
 
-  const session = auth
-    ? await auth.api.getSession({ headers: await headers() })
-    : null;
+  // When the template runs in funnel-mode (no DATABASE_URL → auth=null), the
+  // buyer is anonymous. We still call the platform so the funnel_payment row
+  // gets stamped as redeemed, then render a brand-voice thank-you. No signin
+  // gate, no local entitlement table (there's no user to link it to).
+  if (!auth) {
+    return <AnonymousAck claim={claim} />;
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user?.id) {
     return (
@@ -49,44 +59,112 @@ export default async function PaymentSuccessPage({
     );
   }
 
-  try {
-    const sessionEmail = session.user.email?.toLowerCase();
-    const entitlement = await claimVibizEntitlement(claim, sessionEmail);
-    const buyerEmail = entitlement.buyerEmail?.toLowerCase();
-    if (buyerEmail && sessionEmail && buyerEmail !== sessionEmail) {
-      return (
-        <PaymentShell
-          title="Sign in with purchase email"
-          message={`This purchase was made with ${entitlement.buyerEmail}. Sign in with that email to unlock access.`}
-          actions={
-            <Button href={loginHref(claim, "login")}>Switch account</Button>
-          }
-        />
-      );
-    }
-    await storeLocalEntitlement(session.user.id, entitlement);
+  const sessionEmail = session.user.email?.toLowerCase();
+  const outcome = await claimVibizEntitlement(claim, sessionEmail);
+  return renderAuthenticatedOutcome({
+    outcome,
+    sessionUserId: session.user.id,
+    sessionEmail,
+    claim,
+  });
+}
+
+async function renderAuthenticatedOutcome({
+  outcome,
+  sessionUserId,
+  sessionEmail,
+  claim,
+}: {
+  outcome: ClaimOutcome;
+  sessionUserId: string;
+  sessionEmail: string | undefined;
+  claim: string;
+}) {
+  if (outcome.kind === "pending") {
+    return <PendingShell />;
+  }
+  if (outcome.kind === "error") {
+    return <ErrorShell error={outcome.error} />;
+  }
+
+  // success or already_redeemed
+  const entitlement = outcome.entitlement;
+  const buyerEmail = entitlement.buyerEmail?.toLowerCase();
+  if (buyerEmail && sessionEmail && buyerEmail !== sessionEmail) {
     return (
       <PaymentShell
-        title="Access unlocked"
-        message={`Your ${entitlement.entitlementKey} purchase is now linked to this account.`}
-        detail={
-          entitlement.buyerEmail
-            ? `Paid as ${entitlement.buyerEmail}`
-            : undefined
-        }
-        actions={<Button href="/dashboard">Continue</Button>}
-      />
-    );
-  } catch (error) {
-    return (
-      <PaymentShell
-        title="Payment needs review"
-        message="We could not verify this payment claim. Please try again from your Stripe success link or contact support."
-        detail={error instanceof Error ? error.message : undefined}
-        actions={<Button href="/">Back home</Button>}
+        title="Sign in with purchase email"
+        message={`This purchase was made with ${entitlement.buyerEmail}. Sign in with that email to unlock access.`}
+        actions={<Button href={loginHref(claim, "login")}>Switch account</Button>}
       />
     );
   }
+
+  // Best-effort local mirror. If the local DB write fails (transient Turso
+  // issue) we still surface success, the platform is the source of truth
+  // and the next `hasLocalEntitlement` call will re-resolve via /check.
+  try {
+    await storeLocalEntitlement(sessionUserId, entitlement);
+  } catch {
+    // swallow; success rendering is still correct
+  }
+
+  return (
+    <PaymentShell
+      title="Access unlocked"
+      message={`Your ${entitlement.entitlementKey} purchase is now linked to this account.`}
+      detail={entitlement.buyerEmail ? `Paid as ${entitlement.buyerEmail}` : undefined}
+      actions={<Button href="/dashboard">Continue</Button>}
+    />
+  );
+}
+
+/**
+ * Funnel-mode renderer. No local entitlement persistence, the operator
+ * fulfils delivery via email or manual review, using `funnel_payment` rows
+ * on the Vibiz side as the source of truth.
+ */
+async function AnonymousAck({ claim }: { claim: string }) {
+  const outcome = await claimVibizEntitlement(claim);
+  if (outcome.kind === "pending") return <PendingShell />;
+  if (outcome.kind === "error") return <ErrorShell error={outcome.error} />;
+  return <AnonymousSuccessShell entitlement={outcome.entitlement} />;
+}
+
+function AnonymousSuccessShell({
+  entitlement,
+}: {
+  entitlement: VibizEntitlementData;
+}) {
+  return (
+    <PaymentShell
+      title="Payment confirmed"
+      message="Thanks for your purchase. We're preparing your result and will email it to you shortly."
+      detail={entitlement.buyerEmail ? `Confirmation sent to ${entitlement.buyerEmail}` : undefined}
+      actions={<Button href="/">Back home</Button>}
+    />
+  );
+}
+
+function PendingShell() {
+  return (
+    <PaymentShell
+      title="Confirming your payment"
+      message="Your payment was successful. We're still finalising the confirmation on our side, this usually takes under a minute. Refresh this page if you don't see access shortly."
+      detail="If this persists for more than a few minutes, contact support with your Stripe receipt."
+    />
+  );
+}
+
+function ErrorShell({ error }: { error: string }) {
+  return (
+    <PaymentShell
+      title="Payment needs review"
+      message="We could not verify this payment claim. Please try again from your Stripe success link or contact support."
+      detail={error}
+      actions={<Button href="/">Back home</Button>}
+    />
+  );
 }
 
 function PaymentShell({
