@@ -12,6 +12,18 @@
         "setCacheKey": true,
         "timeout": 600000,
         "chunkTimeout": 30000
+      },
+      "models": {
+        "claude-sonnet-4-5": {
+          "options": {
+            "thinking": { "type": "disabled" }
+          }
+        },
+        "claude-haiku-4-5": {
+          "options": {
+            "thinking": { "type": "disabled" }
+          }
+        }
       }
     }
   },

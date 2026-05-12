@@ -1,9 +1,10 @@
-"use client";
-import { config } from "@/lib/config";
-import { authEnabled } from "@/lib/auth-client";
+import { getConfig } from "@/lib/config-server";
 import { Button } from "@/components/ui/button";
 
+const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
+
 export function Navbar() {
+  const config = getConfig();
   return (
     <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">

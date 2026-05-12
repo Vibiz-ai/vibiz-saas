@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
-import { config } from "@/lib/config";
+import { getConfig } from "@/lib/config-server";
 import { VibizSelectBridge } from "@/components/VibizSelectBridge";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: `${config.product.name} — ${config.product.tagline}`,
-  description: config.product.description,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = getConfig();
+  return {
+    title: `${config.product.name} — ${config.product.tagline}`,
+    description: config.product.description,
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const config = getConfig();
   return (
     <html
       lang="en"

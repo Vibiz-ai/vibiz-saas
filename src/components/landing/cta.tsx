@@ -1,7 +1,8 @@
-import { config } from "@/lib/config";
+import { getConfig } from "@/lib/config-server";
 import { Button } from "@/components/ui/button";
 
 export function CTA() {
+  const config = getConfig();
   return (
     <section className="py-24 bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-secondary)] text-white">
       <div className="max-w-3xl mx-auto px-6 text-center">
